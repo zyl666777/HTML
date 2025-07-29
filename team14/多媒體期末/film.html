@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>影片</title>
+    <link rel="icon" type="image/x-icon" href="images/houses.svg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/test.css" rel="stylesheet">
+    <style>
+        /* Additional styles */
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        #dancingImage {
+            opacity: 0;
+            animation: fadeIn 3s forwards;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            position: relative;
+        }
+
+        #text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            animation: fadeIn 3s forwards;
+            text-align: center;
+        }
+        #movie {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            animation: fadeIn 5s forwards;
+            text-align: center;
+        }
+ /* 自定义样式 */
+ .modal-dialog {
+            max-width: 800px; /* 设置模态框的最大宽度 */
+        }
+        .modal-content {
+            width: 100%; /* 确保模态框内容宽度为100% */
+        }
+        .modal-body {
+            position: relative;
+            padding: 0;
+        }
+        .modal-video {
+            width: 100%;
+            height: auto;
+        }
+        body{
+          overflow:hidden;
+        }
+    </style>
+</head>
+<body>
+    <header> 
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container">
+                <a class="navbar-brand" href="index.html">首頁</a>
+                <a class="navbar-brand" href="film.html">影片</a>
+                <a class="navbar-brand" href="pic.html">照片</a>
+                <a class="navbar-brand" href="other.html">詳情</a>
+            </div>
+        </nav>
+    </header>
+
+    <div class="wrap">
+        <div class="container" id="dancingImage">
+            <img src="images/dancing.gif" alt="Dancing Image" class="img-fluid">
+            <img src="images/welcome.jfif" alt="Welcome" class="img-fluid" id="text">
+            
+            <!--<div class="row">
+            
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal" id="movie">
+              期初八大
+            </button><br>
+           </div>-->
+           <div class="row mt-5">
+            <div class="col-md-6 offset-md-3 text-center">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal" id="movie">
+              母親節擴香石
+            </button>
+          </div>
+            </div>
+            <!--<div class="row mt-5">
+              <div class="col-md-6 offset-md-3 text-center">
+                  <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
+                    期初
+                  </button>
+              </div>
+          </div>-->
+        </div>
+        
+            
+            <!-- Modal -->
+            
+                      
+                  </div>
+                  
+                  <!-- Video iframes -->
+                  
+                  <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="exampleModalLabel">期初八大</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <video controls >
+                            <source src="assets/mp4/s1.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                         
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="exampleModalLabel">母親節擴香石</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <video controls >
+                            <source src="assets/mp4/s2.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="exampleModalLabel">期初</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <video controls>
+                            <source src="assets/mp4/s3.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                
+          </div>
+            <!-- Button trigger modal -->
+
+
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
