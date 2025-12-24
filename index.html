@@ -11,7 +11,6 @@
         body {
             font-family: 'Noto Sans TC', sans-serif;
             background: radial-gradient(circle, #1a472a 0%, #0a2a16 100%);
-            /* 修改：允許垂直捲動，禁止水平捲動 */
             overflow-x: hidden;
             overflow-y: auto;
             color: white;
@@ -22,10 +21,9 @@
             flex-direction: column;
             align-items: center;
             padding: 20px 0;
-            touch-action: pan-y; /* 允許手勢上下滑動 */
+            touch-action: pan-y;
         }
 
-        /* 確保背景在捲動時依然覆蓋全螢幕 */
         body::before {
             content: "";
             position: fixed;
@@ -108,6 +106,7 @@
         .rarity-ssr { border-color: #ffd700; background: linear-gradient(135deg, #fffcf0 0%, #fff0b3 100%); }
         .rarity-sr { border-color: #c0c0c0; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); }
         .rarity-r { border-color: #cd7f32; background: white; }
+        .rarity-trap { border-color: #ff0000; background: linear-gradient(135deg, #ffe5e5 0%, #ffcccc 100%); }
 
         .glow-ssr { box-shadow: 0 0 15px #ffd700; z-index: 10; }
 
@@ -121,46 +120,10 @@
             animation: shuffle 0.6s ease-in-out;
         }
 
-        .btn-draw {
-            background: #c41e3a;
-            box-shadow: 0 4px 0 #800e13;
-            user-select: none;
-            z-index: 20; 
-            position: relative;
-        }
-        .btn-draw:active {
-            transform: translateY(2px);
-            box-shadow: none;
-        }
-
-        @keyframes snowfall {
-            0% { transform: translateY(-10vh) rotate(0deg); }
-            100% { transform: translateY(110vh) rotate(360deg); }
-        }
-
-        .flake {
-            position: absolute;
-            color: white;
-            animation: snowfall linear infinite;
-        }
-
-        #overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.95);
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            text-align: center;
-        }
-
         #resultModal {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.85);
+            background: rgba(0,0,0,0.9);
             z-index: 200;
             display: none;
             flex-direction: column;
@@ -170,6 +133,19 @@
             padding: 20px;
         }
 
+        .btn-action {
+            background: #c41e3a;
+            color: white;
+            padding: 10px 25px;
+            border-radius: 99px;
+            font-weight: bold;
+            margin-top: 15px;
+            box-shadow: 0 4px 15px rgba(196, 30, 58, 0.4);
+            transition: all 0.2s;
+        }
+        
+        .btn-action:active { transform: scale(0.95); }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: scale(0.9); }
             to { opacity: 1; transform: scale(1); }
@@ -178,7 +154,6 @@
 </head>
 <body>
 
-    <!-- 音軌 -->
     <audio id="audioShuffle" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3" preload="auto" crossorigin="anonymous"></audio>
     <audio id="audioFlip" src="https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3" preload="auto" crossorigin="anonymous"></audio>
     <audio id="audioSSR" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3" preload="auto" crossorigin="anonymous"></audio>
@@ -186,119 +161,128 @@
     <div id="overlay">
         <div class="text-7xl mb-6">🎄</div>
         <h2 class="text-3xl font-bold mb-3 text-white">聖誕派對歌戰</h2>
-        <p class="text-yellow-400 animate-pulse mb-8">「 點擊畫面開始遊戲 」</p>
+        <p class="text-yellow-400 animate-pulse">「 點擊畫面開始遊戲 」</p>
     </div>
 
     <!-- 結果彈窗 -->
-    <div id="resultModal" onclick="this.style.display='none'">
-        <div class="text-yellow-400 text-sm mb-2 font-bold tracking-widest">抽中獎項</div>
+    <div id="resultModal">
+        <div id="modalLabel" class="text-yellow-400 text-sm mb-2 font-bold tracking-widest">抽中獎項</div>
         <div id="modalRarity" class="text-xs px-3 py-1 rounded-full mb-4 font-bold"></div>
-        <div id="modalTitle" class="text-4xl font-extrabold mb-4 text-center text-white drop-shadow-md"></div>
-        <div id="modalDesc" class="text-lg text-gray-200 mb-8 text-center max-w-xs"></div>
-        <div class="text-gray-400 text-xs animate-bounce mt-4">點擊任何地方關閉</div>
+        <div id="modalTitle" class="text-4xl font-extrabold mb-4 text-center text-white"></div>
+        <div id="modalDesc" class="text-lg text-gray-200 mb-6 text-center max-w-xs"></div>
+        
+        <!-- 點歌按鈕 -->
+        <div id="modalActionArea" class="flex flex-col gap-3"></div>
+        
+        <button onclick="document.getElementById('resultModal').style.display='none'" class="mt-10 text-gray-400 text-xs border-b border-gray-600">
+            關閉視窗
+        </button>
     </div>
 
     <div class="snow" id="snowContainer"></div>
 
-    <div class="z-10 text-center mb-4 px-4">
+    <div class="z-10 text-center mb-4 mt-4">
         <h1 class="text-2xl font-bold text-yellow-400 drop-shadow-lg">聖誕命運 4x3 宮格</h1>
         <p class="text-gray-200 text-xs">決定你的唱歌挑戰</p>
     </div>
 
     <div class="z-10 w-full flex flex-col items-center">
         <div class="card-grid mb-6" id="cardGrid"></div>
-
-        <div class="flex flex-col items-center gap-2 relative z-20 pb-10">
-            <button id="shuffleBtn" class="btn-draw px-12 py-3 rounded-full text-white font-bold text-lg">
+        <div class="flex flex-col items-center pb-10">
+            <button id="shuffleBtn" class="bg-[#c41e3a] px-12 py-3 rounded-full text-white font-bold text-lg shadow-lg">
                 重新洗牌
             </button>
-            <div id="statusText" class="text-yellow-200 font-medium text-xs mt-1">請先點擊洗牌</div>
-        </div>
-    </div>
-
-    <div id="congrats" class="fixed inset-0 flex items-center justify-center z-50 pointer-events-none opacity-0 transition-opacity duration-500 bg-black/70">
-        <div class="text-center">
-            <h2 class="text-7xl font-bold text-yellow-400 mb-4 animate-bounce">SSR!</h2>
-            <p class="text-2xl text-white font-bold">超級奇蹟！</p>
+            <div id="statusText" class="text-yellow-200 text-xs mt-2">請先點擊洗牌</div>
         </div>
     </div>
 
     <script>
-        const cardPool = [
-            { rarity: 'SSR', title: '歌神金卡', desc: '獲得「指定歌曲權」！', color: 'bg-yellow-500 text-white' },
-            { rarity: 'SSR', title: '大餐特權', desc: '唱一首有食物的歌！', color: 'bg-yellow-500 text-white' },
+        // --- 設定搞怪歌庫 ---
+        const trapSongs = [
+            { title: '《舞女》', desc: '【命運強制】改唱這首，並加上性感舞步！', ktvCode: '40288' },
+            { title: '《你是我的花朵》', desc: '【命運強制】改唱這首，全場一起跳花朵舞！', ktvCode: '31045' },
+            { title: '《雞攻擊之術》', desc: '【命運強制】要用「雞」的聲音唱一段！', ytSearch: 'Chicken Attack' },
+            { title: '《保庇》', desc: '【命運強制】改唱這首，副歌要完美重現手勢！', ktvCode: '12345' },
+            { title: '《轉吧七彩霓虹燈》', desc: '【命運強制】唱這首時要全場繞著你轉！', ktvCode: '66688' },
+            { title: '《失戀陣線聯盟》', desc: '【命運強制】找一位舞伴一起跳經典舞步！', ktvCode: '55432' }
+        ];
+
+        let usedTrapIndices = [];
+
+        function getNextTrapSong() {
+            if (usedTrapIndices.length >= trapSongs.length) usedTrapIndices = [];
+            let randomIndex;
+            do {
+                randomIndex = Math.floor(Math.random() * trapSongs.length);
+            } while (usedTrapIndices.includes(randomIndex));
+            usedTrapIndices.push(randomIndex);
+            return trapSongs[randomIndex];
+        }
+
+        const baseCardPool = [
+            { rarity: 'SSR', title: '歌神金卡', desc: '獲得「無限插播權」！', color: 'bg-yellow-500 text-white' },
+            { rarity: 'TRAP', title: '？？？', desc: '揭曉你的命運歌單...', color: 'bg-red-600 text-white' },
             { rarity: 'SR', title: '馴鹿舞伴', desc: '指定兩人為你伴舞。', color: 'bg-gray-400 text-white' },
-            { rarity: 'SR', title: '雪橇切歌', desc: '獲得「指定中文以外歌曲」。', color: 'bg-gray-400 text-white' },
+            { rarity: 'TRAP', title: '？？？', desc: '揭曉你的命運歌單...', color: 'bg-red-600 text-white' },
             { rarity: 'SR', title: '節奏大師', desc: '全場必須幫你拍手伴奏。', color: 'bg-gray-400 text-white' },
             { rarity: 'SR', title: '天使合聲', desc: '指定一人為你全程和聲。', color: 'bg-gray-400 text-white' },
-            { rarity: 'R', title: '聖誕帽咒', desc: '唱指定主題歌曲。', color: 'bg-orange-600 text-white' },
-            { rarity: 'R', title: '憂鬱雪人', desc: '用最悲傷的表情/語氣唱嗨歌。', color: 'bg-orange-600 text-white' },
+            { rarity: 'R', title: '聖誕帽咒', desc: '唱歌必須全程戴聖誕帽。', color: 'bg-orange-600 text-white' },
+            { rarity: 'TRAP', title: '？？？', desc: '揭曉你的命運歌單...', color: 'bg-red-600 text-white' },
             { rarity: 'R', title: '重禮挑戰', desc: '雙手抱著重物唱歌。', color: 'bg-orange-600 text-white' },
-            {  rarity: 'TRAP', title: '《你是我的花朵》', desc: '【命運強制】改唱這首，全場一起跳花朵舞！', color: 'bg-red-600 text-white'  },
+            { rarity: 'R', title: '假音雪花', desc: '副歌全用假音唱。', color: 'bg-orange-600 text-white' },
             { rarity: 'R', title: '轉圈雪球', desc: '間奏時必須原地自轉三圈。', color: 'bg-orange-600 text-white' },
-            { rarity: 'R', title: '靜默聖誕', desc: '這首歌必須用氣聲OR氣音唱。', color: 'bg-orange-600 text-white' }
+            { rarity: 'R', title: '靜默聖誕', desc: '這首歌的結尾必須用氣聲唱。', color: 'bg-orange-600 text-white' }
         ];
 
         let canFlip = false;
         let isShuffling = false;
         let cardDataMap = [];
 
-        document.getElementById('overlay').addEventListener('click', function() {
-            const self = this;
-            const audioIds = ['audioShuffle', 'audioFlip', 'audioSSR'];
-            audioIds.forEach(id => {
-                const a = document.getElementById(id);
-                if (a) {
-                    a.muted = true;
-                    a.play().then(() => {
-                        a.pause();
-                        a.muted = false;
-                        a.currentTime = 0;
-                    }).catch(err => console.warn("Audio warm up skipped:", id));
-                }
-            });
-
-            self.style.display = 'none';
+        // 初始化
+        window.onload = function() {
             initCards();
             createSnow();
-            document.getElementById('statusText').innerText = "請點擊重新洗牌";
+        };
+
+        document.getElementById('overlay').addEventListener('click', function() {
+            this.style.display = 'none';
+            // 嘗試解鎖音訊
+            ['audioShuffle', 'audioFlip', 'audioSSR'].forEach(id => {
+                const a = document.getElementById(id);
+                if(a) a.play().then(() => { a.pause(); a.currentTime = 0; }).catch(() => {});
+            });
         });
 
-        document.getElementById('shuffleBtn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            shuffleCards();
-        });
-
-        function playSound(id) {
-            const sound = document.getElementById(id);
-            if (sound && sound.readyState >= 2) {
-                sound.currentTime = 0;
-                const playPromise = sound.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(error => { console.error("Playback failed:", error); });
-                }
-            }
-        }
+        document.getElementById('shuffleBtn').addEventListener('click', shuffleCards);
 
         function initCards() {
             const grid = document.getElementById('cardGrid');
+            if (!grid) return;
             grid.innerHTML = '';
             for (let i = 0; i < 12; i++) {
                 const card = document.createElement('div');
                 card.className = 'card-container';
-                card.id = `card-${i}`;
+                card.id = `container-${i}`;
                 card.onclick = () => handleCardClick(i);
                 card.innerHTML = `
-                    <div class="card-inner">
+                    <div class="card-inner" id="inner-${i}">
                         <div class="card-back"></div>
                         <div class="card-front" id="front-${i}">
                             <div class="rarity-tag text-[7px] font-bold px-1 py-0.5 rounded-full mb-1"></div>
-                            <div class="reward-title font-bold text-[11px] mb-0.5 leading-tight"></div>
-                            <div class="reward-desc text-[8px] text-gray-500 leading-tight"></div>
+                            <div class="reward-title font-bold text-[11px] mb-0.5"></div>
+                            <div class="reward-desc text-[8px] text-gray-500"></div>
                         </div>
                     </div>
                 `;
                 grid.appendChild(card);
+            }
+        }
+
+        function playSound(id) {
+            const audio = document.getElementById(id);
+            if (audio) {
+                audio.currentTime = 0;
+                audio.play().catch(e => console.warn("音訊播放受阻:", e));
             }
         }
 
@@ -307,85 +291,99 @@
             isShuffling = true;
             canFlip = false;
             
+            // 重置所有卡片狀態
+            document.querySelectorAll('.card-container').forEach(c => c.classList.remove('flipped'));
+            
             playSound('audioShuffle');
-            document.querySelectorAll('.card-container').forEach(c => c.classList.remove('flipped', 'shuffling'));
             document.getElementById('statusText').innerText = "命運打亂中...";
 
-            const cards = document.querySelectorAll('.card-container');
-            cards.forEach((card, index) => {
-                const rect = card.getBoundingClientRect();
-                const gridRect = document.getElementById('cardGrid').getBoundingClientRect();
-                const centerX = gridRect.left + gridRect.width / 2;
-                const centerY = gridRect.top + gridRect.height / 2;
-                const cardX = rect.left + rect.width / 2;
-                const cardY = rect.top + rect.height / 2;
-
-                card.style.setProperty('--tx', `${centerX - cardX}px`);
-                card.style.setProperty('--ty', `${centerY - cardY}px`);
-                
-                setTimeout(() => card.classList.add('shuffling'), index * 20);
+            cardDataMap = [...baseCardPool].sort(() => Math.random() - 0.5);
+            
+            // 更新卡片內容，確保元素存在
+            cardDataMap.forEach((data, i) => {
+                const front = document.getElementById(`front-${i}`);
+                if (front) {
+                    front.className = `card-front rarity-${data.rarity.toLowerCase()}`;
+                    const tag = front.querySelector('.rarity-tag');
+                    const title = front.querySelector('.reward-title');
+                    const desc = front.querySelector('.reward-desc');
+                    
+                    if (tag) {
+                        tag.innerText = data.rarity === 'TRAP' ? '強制曲目' : data.rarity;
+                        tag.className = `rarity-tag text-[7px] font-bold px-1 py-0.5 rounded-full mb-1 ${data.color}`;
+                    }
+                    if (title) title.innerText = data.title;
+                    if (desc) desc.innerText = data.desc;
+                }
             });
 
             setTimeout(() => {
-                cardDataMap = [...cardPool].sort(() => Math.random() - 0.5);
-                cardDataMap.forEach((data, i) => {
-                    const front = document.getElementById(`front-${i}`);
-                    if (!front) return;
-                    front.className = `card-front rarity-${data.rarity.toLowerCase()}`;
-                    front.querySelector('.rarity-tag').innerText = data.rarity;
-                    front.querySelector('.rarity-tag').className = `rarity-tag text-[7px] font-bold px-1 py-0.5 rounded-full mb-1 ${data.color}`;
-                    front.querySelector('.reward-title').innerText = data.title;
-                    front.querySelector('.reward-desc').innerText = data.desc;
-                    front.dataset.rarity = data.rarity;
-                });
-
                 isShuffling = false;
                 canFlip = true;
                 document.getElementById('statusText').innerText = "洗牌完成！請選一張";
-                cards.forEach(c => c.classList.remove('shuffling'));
-            }, 1000);
+            }, 800);
         }
 
         function handleCardClick(index) {
             if (!canFlip || isShuffling) return;
-            const card = document.getElementById(`card-${index}`);
-            if (card.classList.contains('flipped')) return;
+            const container = document.getElementById(`container-${index}`);
+            if (!container || container.classList.contains('flipped')) return;
 
-            const data = cardDataMap[index];
+            let data = {...cardDataMap[index]};
+            if (data.rarity === 'TRAP') {
+                const trap = getNextTrapSong();
+                data.title = trap.title;
+                data.desc = trap.desc;
+                data.ktvCode = trap.ktvCode;
+                data.ytSearch = trap.ytSearch;
+                
+                // 動態更新翻開後的卡面文字
+                const front = document.getElementById(`front-${index}`);
+                if (front) {
+                    front.querySelector('.reward-title').innerText = data.title;
+                    front.querySelector('.reward-desc').innerText = data.desc;
+                }
+            }
+
             playSound('audioFlip');
-            card.classList.add('flipped');
-            
-            const front = document.getElementById(`front-${index}`);
+            container.classList.add('flipped');
             
             setTimeout(() => {
                 showResultModal(data);
-                if (data.rarity === 'SSR') {
-                    playSound('audioSSR');
-                    front.classList.add('glow-ssr');
-                    showCongrats();
-                }
-            }, 700);
+                if (data.rarity === 'SSR') playSound('audioSSR');
+            }, 600);
         }
 
         function showResultModal(data) {
             const modal = document.getElementById('resultModal');
-            const rTag = document.getElementById('modalRarity');
-            rTag.innerText = data.rarity;
-            rTag.className = `text-xs px-3 py-1 rounded-full mb-4 font-bold ${data.color}`;
+            if (!modal) return;
+            
+            const actionArea = document.getElementById('modalActionArea');
+            actionArea.innerHTML = '';
+
+            document.getElementById('modalLabel').innerText = data.rarity === 'TRAP' ? "🚨 命運大反轉 🚨" : "抽中獎項";
+            document.getElementById('modalRarity').innerText = data.rarity === 'TRAP' ? '強制更換歌曲' : data.rarity;
+            document.getElementById('modalRarity').className = `text-xs px-3 py-1 rounded-full mb-4 font-bold ${data.color}`;
             document.getElementById('modalTitle').innerText = data.title;
             document.getElementById('modalDesc').innerText = data.desc;
-            modal.style.display = 'flex';
-        }
 
-        function showCongrats() {
-            const congrats = document.getElementById('congrats');
-            congrats.style.opacity = '1';
-            setTimeout(() => congrats.style.opacity = '0', 2500);
+            if (data.rarity === 'TRAP') {
+                const btn = document.createElement('button');
+                btn.className = 'btn-action';
+                const searchStr = data.ytSearch || data.title;
+                btn.innerText = data.ktvCode ? `KTV 點歌編號：${data.ktvCode}` : `🎬 開啟 YouTube 播放`;
+                btn.onclick = () => {
+                    window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(searchStr)}`, '_blank');
+                };
+                actionArea.appendChild(btn);
+            }
+
+            modal.style.display = 'flex';
         }
 
         function createSnow() {
             const container = document.getElementById('snowContainer');
-            container.innerHTML = '';
+            if (!container) return;
             for (let i = 0; i < 30; i++) {
                 const flake = document.createElement('div');
                 flake.className = 'flake';
@@ -393,6 +391,7 @@
                 flake.style.left = Math.random() * 100 + 'vw';
                 flake.style.animationDuration = (Math.random() * 3 + 2) + 's';
                 flake.style.opacity = Math.random();
+                flake.style.top = "-20px";
                 container.appendChild(flake);
             }
         }
