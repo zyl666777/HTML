@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聖誕歌戰 - 五回合賽事紀錄</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: radial-gradient(circle, #0a2a16 0%, #051a0d 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 10px;
+        }
+
+        .record-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 500px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .round-row {
+            display: grid;
+            grid-template-columns: 80px 1fr 1fr;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 8px;
+            color: white;
+            text-align: center;
+            width: 100%;
+            font-weight: bold;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #ffd700;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .winner-banner {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 100;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.5s ease-out;
+            text-align: center;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .gold-glow {
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+        }
+
+        .celebrate-btn {
+            background: linear-gradient(135deg, #c41e3a 0%, #800e13 100%);
+            padding: 12px 40px;
+            border-radius: 99px;
+            font-weight: bold;
+            box-shadow: 0 0 20px rgba(196, 30, 58, 0.5);
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-black text-yellow-500 mb-2">五回合戰報結算</h1>
+        <p class="text-gray-400 text-sm">輸入每一回合的分數，決定誰是聖誕歌神！</p>
+    </div>
+
+    <div class="record-card">
+        <!-- 表頭 -->
+        <div class="grid grid-cols-3 gap-4 mb-6 text-center">
+            <div class="text-gray-500 text-sm font-bold">回合</div>
+            <div class="text-red-500 font-bold">紅隊 RED</div>
+            <div class="text-green-500 font-bold">綠隊 GREEN</div>
+        </div>
+
+        <!-- 5回合輸入 -->
+        <div id="roundsContainer">
+            <!-- JavaScript 會生成 5 筆 -->
+        </div>
+
+        <!-- 總計欄位 -->
+        <div class="grid grid-cols-3 gap-4 mt-8 pt-6 border-t-2 border-yellow-500/30 text-center">
+            <div class="text-yellow-500 font-black text-xl flex items-center justify-center">總分</div>
+            <div>
+                <div id="total-red" class="text-3xl font-black text-red-500">0</div>
+            </div>
+            <div>
+                <div id="total-green" class="text-3xl font-black text-green-500">0</div>
+            </div>
+        </div>
+
+        <button onclick="checkFinalWinner()" class="w-full mt-8 bg-yellow-600 hover:bg-yellow-500 text-black font-black py-4 rounded-xl transition-all shadow-xl">
+            🏆 揭曉最終贏家
+        </button>
+    </div>
+
+    <!-- 贏家畫面 -->
+    <div id="winnerModal" class="winner-banner">
+        <div class="text-8xl mb-4">👑</div>
+        <div id="winnerTeamName" class="text-6xl font-black mb-2 tracking-tighter"></div>
+        <div class="text-2xl text-yellow-500 font-bold mb-8">成為了今年的聖誕歌神！</div>
+        <div class="bg-white/10 p-6 rounded-2xl mb-10 w-64">
+            <div class="text-sm text-gray-400 mb-1">最終比數</div>
+            <div id="finalScoreRatio" class="text-3xl font-mono font-bold">0 : 0</div>
+        </div>
+        <button onclick="closeWinnerModal()" class="celebrate-btn">再次挑戰</button>
+    </div>
+
+    <script>
+        const container = document.getElementById('roundsContainer');
+        
+        // 初始化 5 回合輸入框
+        for (let i = 1; i <= 5; i++) {
+            const row = document.createElement('div');
+            row.className = 'round-row';
+            row.innerHTML = `
+                <div class="text-gray-400 font-bold italic">Round ${i}</div>
+                <div><input type="number" class="score-input red-input" data-team="red" data-round="${i}" placeholder="0" oninput="calculateTotals()"></div>
+                <div><input type="number" class="score-input green-input" data-team="green" data-round="${i}" placeholder="0" oninput="calculateTotals()"></div>
+            `;
+            container.appendChild(row);
+        }
+
+        function calculateTotals() {
+            let totalRed = 0;
+            let totalGreen = 0;
+
+            document.querySelectorAll('.red-input').forEach(input => {
+                totalRed += parseInt(input.value) || 0;
+            });
+
+            document.querySelectorAll('.green-input').forEach(input => {
+                totalGreen += parseInt(input.value) || 0;
+            });
+
+            document.getElementById('total-red').innerText = totalRed;
+            document.getElementById('total-green').innerText = totalGreen;
+            
+            // 視覺特效：領先者放大
+            if (totalRed > totalGreen) {
+                document.getElementById('total-red').classList.add('scale-110', 'gold-glow');
+                document.getElementById('total-green').classList.remove('scale-110', 'gold-glow');
+            } else if (totalGreen > totalRed) {
+                document.getElementById('total-green').classList.add('scale-110', 'gold-glow');
+                document.getElementById('total-red').classList.remove('scale-110', 'gold-glow');
+            } else {
+                document.getElementById('total-red').classList.remove('scale-110', 'gold-glow');
+                document.getElementById('total-green').classList.remove('scale-110', 'gold-glow');
+            }
+        }
+
+        function checkFinalWinner() {
+            const r = parseInt(document.getElementById('total-red').innerText);
+            const g = parseInt(document.getElementById('total-green').innerText);
+            const modal = document.getElementById('winnerModal');
+            const teamName = document.getElementById('winnerTeamName');
+            const scoreRatio = document.getElementById('finalScoreRatio');
+
+            if (r === 0 && g === 0) {
+                alert("請先輸入分數再結算喔！");
+                return;
+            }
+
+            if (r > g) {
+                teamName.innerText = "紅隊 RED";
+                teamName.className = "text-6xl font-black mb-2 tracking-tighter text-red-500 gold-glow";
+            } else if (g > r) {
+                teamName.innerText = "綠隊 GREEN";
+                teamName.className = "text-6xl font-black mb-2 tracking-tighter text-green-500 gold-glow";
+            } else {
+                teamName.innerText = "雙方平手";
+                teamName.className = "text-6xl font-black mb-2 tracking-tighter text-yellow-500";
+            }
+
+            scoreRatio.innerText = `${r} : ${g}`;
+            modal.style.display = 'flex';
+        }
+
+        function closeWinnerModal() {
+            if(confirm("確定要清空所有紀錄重新開始嗎？")) {
+                document.querySelectorAll('input').forEach(i => i.value = '');
+                calculateTotals();
+                document.getElementById('winnerModal').style.display = 'none';
+            } else {
+                document.getElementById('winnerModal').style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
