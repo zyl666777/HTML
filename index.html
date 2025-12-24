@@ -426,4 +426,432 @@
         };
     </script>
 </body>
+</html><!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>聖誕紅白歌戰 - 抽卡與計分系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: radial-gradient(circle, #1a472a 0%, #0a2a16 100%);
+            color: white;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; 
+        }
+
+        #snow-canvas {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 1;
+        }
+
+        .content-wrapper { position: relative; z-index: 10; height: 100vh; overflow-y: auto; }
+
+        .nav-tab { transition: all 0.3s; border-bottom: 3px solid transparent; opacity: 0.6; }
+        .nav-tab.active { color: #ffd700; border-bottom: 3px solid #ffd700; opacity: 1; }
+
+        /* 卡片網格 */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            perspective: 1000px;
+        }
+        @media (min-width: 640px) { .card-grid { grid-template-columns: repeat(4, 1fr); } }
+
+        .card-container { aspect-ratio: 2 / 3; cursor: pointer; position: relative; width: 100%; }
+        .card-inner {
+            position: relative; width: 100%; height: 100%;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+        .card-container.flipped .card-inner { transform: rotateY(180deg); }
+        
+        .card-front, .card-back {
+            position: absolute; width: 100%; height: 100%;
+            backface-visibility: hidden; border-radius: 12px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            border: 2px solid #ffd700;
+        }
+        .card-back { background: linear-gradient(135deg, #c41e3a 0%, #800e13 100%); z-index: 2; }
+        .card-back::after { content: "🎁"; font-size: 1.5rem; }
+        
+        .card-front { 
+            background: #fffdf0; color: #1a472a; transform: rotateY(180deg); 
+            padding: 8px; text-align: center; 
+        }
+
+        /* 計分板樣式 */
+        .round-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+        }
+        .score-num { font-size: 2.5rem; font-weight: 900; line-height: 1; }
+        .btn-score-sm { 
+            background: rgba(255,255,255,0.1); padding: 6px 10px; border-radius: 8px; 
+            font-size: 0.75rem; border: 1px solid rgba(255,255,255,0.2);
+        }
+        .total-panel {
+            position: sticky; bottom: 20px; background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #ffd700; border-radius: 25px; padding: 15px 25px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5); z-index: 100;
+        }
+        .leading { text-shadow: 0 0 15px #ffd700; color: #ffd700 !important; }
+
+        #resultModal, #winnerModal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 500;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .modal-image-container {
+            width: 100%; height: 180px; background: #222; margin-bottom: 20px;
+            border-radius: 15px; overflow: hidden; display: flex; align-items: center; justify-content: center;
+            position: relative; border: 2px solid rgba(255,255,255,0.1);
+        }
+        .modal-image-container img { width: 100%; height: 100%; object-fit: cover; display: none; }
+
+        .btn-action {
+            background: #c41e3a; color: white; padding: 12px 24px;
+            border-radius: 99px; font-weight: 900; margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="snow-canvas"></canvas>
+
+    <div class="content-wrapper">
+        <audio id="audioFlip" src="https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3" preload="auto"></audio>
+
+        <nav class="flex flex-col items-center bg-black/70 backdrop-blur-lg py-4 sticky top-0 z-[100] border-b border-yellow-600/30">
+            <div class="flex gap-12">
+                <button onclick="switchPage('game')" id="tab-game" class="nav-tab active font-black text-lg tracking-wider">🎲 抽卡機</button>
+                <button onclick="switchPage('results')" id="tab-results" class="nav-tab font-black text-lg tracking-wider">🏆 計分板</button>
+            </div>
+        </nav>
+
+        <!-- 抽卡分頁 -->
+        <main id="page-game" class="flex flex-col items-center p-4 max-w-2xl mx-auto">
+            <div class="text-yellow-200/80 font-bold mt-4 mb-4 text-xs tracking-widest uppercase">Christmas Music Battle - Draw Your Fate</div>
+            
+            <div class="card-grid w-full mb-8" id="cardGrid"></div>
+
+            <button onclick="shuffleCards()" class="bg-[#c41e3a] hover:bg-red-700 active:scale-95 w-full py-4 rounded-xl text-white font-black text-xl shadow-lg transition-all mb-10">🎲 重新洗牌</button>
+        </main>
+
+        <!-- 計分板分頁 -->
+        <main id="page-results" class="hidden flex flex-col items-center p-4 max-w-md mx-auto">
+            <div class="text-center mt-4 mb-6">
+                <h2 class="text-2xl font-black text-yellow-500">紅白對抗戰</h2>
+                <p class="text-[10px] text-white/40 tracking-[0.2em] uppercase">Scoreboard / Round 1-5</p>
+            </div>
+
+            <div id="rounds-list" class="w-full">
+                <!-- 由 JS 動態渲染 -->
+            </div>
+
+            <button onclick="showFinalResult()" class="w-full py-5 mb-32 bg-yellow-500 text-black font-black text-xl rounded-2xl shadow-lg active:scale-95 transition-all">
+                🏆 揭曉總冠軍 🏆
+            </button>
+
+            <!-- 底部即時總分 -->
+            <div class="total-panel flex justify-between items-center w-[90%] max-w-sm">
+                <div class="text-center">
+                    <div class="text-[10px] font-bold text-red-400 uppercase">RED</div>
+                    <div id="total-red" class="text-3xl font-black text-white">0</div>
+                </div>
+                <button onclick="resetGame()" class="text-[10px] bg-white/10 px-3 py-1 rounded-full opacity-40">重置</button>
+                <div class="text-center">
+                    <div class="text-[10px] font-bold text-emerald-400 uppercase">GREEN</div>
+                    <div id="total-green" class="text-3xl font-black text-white">0</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 抽卡結果彈窗 -->
+    <div id="resultModal">
+        <div class="bg-white p-1 rounded-[2.5rem] max-w-sm w-full overflow-hidden shadow-2xl">
+            <div id="modalThemeBar" class="h-2 w-full"></div>
+            <div class="px-6 py-8 text-center bg-zinc-900 rounded-[2.3rem]">
+                <div class="modal-image-container" id="modalImageArea">
+                    <div id="modalPlaceholder" class="text-5xl">🎁</div>
+                    <img id="modalImg" src="" alt="Result Image">
+                </div>
+                <div id="modalRarity" class="text-xs font-black px-4 py-1.5 rounded-full mb-4 inline-block"></div>
+                <div id="modalTitle" class="text-2xl font-black mb-2 text-white"></div>
+                <div id="modalDesc" class="text-gray-400 mb-6 text-sm leading-relaxed px-4"></div>
+                <div id="modalActionArea"></div>
+                <button onclick="closeModal()" class="mt-8 text-zinc-500 text-xs font-bold uppercase tracking-widest">關閉視窗</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 最終勝負彈窗 -->
+    <div id="winnerModal">
+        <div class="p-8 text-center">
+            <div id="win-emoji" class="text-9xl mb-6">🏆</div>
+            <h2 id="win-team" class="text-6xl font-black mb-4">紅隊勝利</h2>
+            <div id="win-score" class="text-3xl font-mono text-white/60 mb-12">250 : 210</div>
+            <button onclick="document.getElementById('winnerModal').style.display='none'" class="px-12 py-4 bg-white text-black font-black rounded-full text-lg">回到計分板</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 雪花背景 ---
+        const canvas = document.getElementById('snow-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        function initSnow() {
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            particles = Array.from({length:50}, () => ({x:Math.random()*canvas.width, y:Math.random()*canvas.height, r:Math.random()*3+1, s:Math.random()*1+0.5}));
+            function draw() {
+                ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle='white';
+                particles.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill(); p.y+=p.s; if(p.y>canvas.height) p.y=-10; });
+                requestAnimationFrame(draw);
+            }
+            draw();
+        }
+
+        // --- 分頁切換 ---
+        function switchPage(p) {
+            document.getElementById('page-game').classList.toggle('hidden', p!=='game');
+            document.getElementById('page-results').classList.toggle('hidden', p!=='results');
+            document.getElementById('tab-game').classList.toggle('active', p==='game');
+            document.getElementById('tab-results').classList.toggle('active', p==='results');
+            if (p === 'results') renderScoreboard();
+        }
+
+        // --- 抽卡邏輯 ---
+        const trapSongsPool = [
+            { title: 'Rick Astley', desc: '【命運挑戰】被 Rickroll 了！請演唱 Never Gonna Give You Up 副歌並模仿舞步！', search: 'Never Gonna Give You Up', img: 'https://media2.giphy.com/media/Ju7l5y9osyymQ/giphy.gif', placeholder: '🕺' },
+            { title: '舞女', desc: '【命運挑戰】改唱這首經典，並加上性感舞步！挑戰成功 +30分。', code: '40288', img: 'https://loremflickr.com/600/400/dance,red', placeholder: '💃' },
+            { title: '你是我的花朵', desc: '【命運挑戰】全場一起跳花朵舞！挑戰成功 +30分。', code: '31045', img: 'https://loremflickr.com/600/400/flower,yellow', placeholder: '🌸' },
+            { title: '雞攻擊之術', desc: '【命運挑戰】需用「雞」的音效完成副歌！挑戰成功 +40分。', search: 'Chicken Attack', img: 'https://loremflickr.com/600/400/chicken', placeholder: '🐔' },
+            { title: '轉吧霓虹燈', desc: '【命運挑戰】演唱時全場需圍繞你旋轉！挑戰成功 +40分。', code: '66688', img: 'https://loremflickr.com/600/400/neon', placeholder: '💡' },
+            { title: 'Doraemon Theme', desc: '【命運挑戰】用最像大雄的聲音演唱！挑戰成功 +30分。', search: 'Doraemon theme', img: 'https://loremflickr.com/600/400/cat,blue', placeholder: '🐱' }
+        ];
+
+        const baseCards = [
+            { rarity: 'SSR', title: '歌神金卡', desc: '獎勵：直接加 50 分！', color: 'bg-yellow-500 text-black', theme: '#eab308', placeholder: '👑' },
+            { rarity: 'TRAP', title: '命運反轉', desc: '惡搞曲目載入中...', color: 'bg-red-600 text-white', theme: '#dc2626', placeholder: '⚠️' },
+            { rarity: 'TRAP', title: '命運反轉', desc: '惡搞曲目載入中...', color: 'bg-red-600 text-white', theme: '#dc2626', placeholder: '⚠️' },
+            { rarity: 'TRAP', title: '命運反轉', desc: '惡搞曲目載入中...', color: 'bg-red-600 text-white', theme: '#dc2626', placeholder: '⚠️' },
+            { rarity: 'SR', title: '馴鹿舞伴', desc: '加 20 分並指定隊友伴舞。', color: 'bg-indigo-500 text-white', theme: '#6366f1', placeholder: '🦌' },
+            { rarity: 'SR', title: '天使合聲', desc: '加 20 分。', color: 'bg-indigo-500 text-white', theme: '#6366f1', placeholder: '😇' },
+            { rarity: 'R', title: '聖誕禮讚', desc: '基本加分 10 分。', color: 'bg-emerald-600 text-white', theme: '#059669', placeholder: '🎁' },
+            { rarity: 'R', title: '靜默夜', desc: '基本加分 10 分。', color: 'bg-emerald-600 text-white', theme: '#059669', placeholder: '🌃' },
+            { rarity: 'R', title: '暖冬可可', desc: '基本加分 10 分。', color: 'bg-emerald-600 text-white', theme: '#059669', placeholder: '☕' },
+            { rarity: 'R', title: '鈴鐺響起', desc: '基本加分 10 分。', color: 'bg-emerald-600 text-white', theme: '#059669', placeholder: '🔔' },
+            { rarity: 'R', title: '雪人氣氛', desc: '基本加分 10 分。', color: 'bg-emerald-600 text-white', theme: '#059669', placeholder: '☃️' },
+            { rarity: 'R', title: '白雪夜', desc: '基本加分 10 分。', color: 'bg-emerald-600 text-white', theme: '#059669', placeholder: '❄️' }
+        ];
+
+        let currentCards = [];
+        let trapQueue = [];
+
+        function initGrid() {
+            const grid = document.getElementById('cardGrid');
+            grid.innerHTML = '';
+            for(let i=0; i<12; i++) {
+                grid.innerHTML += `
+                    <div class="card-container" id="c-${i}" onclick="flip(${i})">
+                        <div class="card-inner">
+                            <div class="card-back"></div>
+                            <div class="card-front" id="f-${i}">
+                                <div class="rarity text-[8px] font-black px-2 py-0.5 rounded-full mb-1"></div>
+                                <div class="title font-black text-[10px] mb-1"></div>
+                                <div class="desc text-[7px] leading-tight"></div>
+                            </div>
+                        </div>
+                    </div>`;
+            }
+        }
+
+        function shuffleCards() {
+            document.querySelectorAll('.card-container').forEach(c => c.classList.remove('flipped'));
+            trapQueue = [...trapSongsPool].sort(() => Math.random() - 0.5);
+            currentCards = [...baseCards].sort(() => Math.random() - 0.5);
+
+            currentCards.forEach((data, i) => {
+                const front = document.getElementById(`f-${i}`);
+                const rarityEl = front.querySelector('.rarity');
+                rarityEl.innerText = data.rarity;
+                rarityEl.className = `rarity text-[8px] font-black px-2 py-0.5 rounded-full mb-1 ${data.color}`;
+                front.querySelector('.title').innerText = data.title;
+                front.querySelector('.desc').innerText = data.desc;
+            });
+        }
+
+        function flip(i) {
+            const card = document.getElementById(`c-${i}`);
+            if(card.classList.contains('flipped')) return;
+            card.classList.add('flipped');
+            document.getElementById('audioFlip').play().catch(()=>{});
+
+            let data = {...currentCards[i]};
+            if(data.rarity === 'TRAP') {
+                const trap = trapQueue.shift();
+                Object.assign(data, trap);
+            }
+            setTimeout(() => showModal(data), 600);
+        }
+
+        function showModal(data) {
+            const m = document.getElementById('resultModal');
+            const img = document.getElementById('modalImg');
+            const placeholder = document.getElementById('modalPlaceholder');
+
+            document.getElementById('modalThemeBar').style.backgroundColor = data.theme;
+            document.getElementById('modalRarity').innerText = data.rarity;
+            document.getElementById('modalRarity').className = `text-xs font-black px-4 py-1.5 rounded-full mb-4 inline-block ${data.color}`;
+            document.getElementById('modalTitle').innerText = data.title;
+            document.getElementById('modalDesc').innerText = data.desc;
+            
+            placeholder.innerText = data.placeholder;
+            placeholder.style.display = 'block';
+            img.style.display = 'none';
+
+            if(data.img) {
+                img.src = data.img;
+                img.onload = () => { placeholder.style.display = 'none'; img.style.display = 'block'; };
+            }
+
+            const action = document.getElementById('modalActionArea');
+            action.innerHTML = '';
+            if(data.search || data.code) {
+                const b = document.createElement('button');
+                b.className = 'btn-action';
+                b.innerText = data.code ? `點歌編號: ${data.code}` : `查看挑戰影片`;
+                b.onclick = () => window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(data.search || data.title)}`, '_blank');
+                action.appendChild(b);
+            }
+            m.style.display = 'flex';
+        }
+
+        function closeModal() { document.getElementById('resultModal').style.display = 'none'; }
+
+        // --- 計分板邏輯 ---
+        let gameScores = [
+            { red: 0, green: 0 }, { red: 0, green: 0 }, { red: 0, green: 0 }, { red: 0, green: 0 }, { red: 0, green: 0 }
+        ];
+
+        function renderScoreboard() {
+            const list = document.getElementById('rounds-list');
+            list.innerHTML = gameScores.map((s, i) => `
+                <div class="round-card">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="bg-white/10 text-[10px] font-black px-3 py-1 rounded-md text-white/40 tracking-widest uppercase">Round 0${i+1}</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="text-center">
+                            <div class="text-red-500 score-num mb-3" id="r-${i}-red">${s.red}</div>
+                            <div class="flex justify-center gap-1">
+                                <button onclick="changeScore(${i}, 'red', 10)" class="btn-score-sm">+10</button>
+                                <button onclick="changeScore(${i}, 'red', 1)" class="btn-score-sm">+1</button>
+                                <button onclick="changeScore(${i}, 'red', -1)" class="btn-score-sm opacity-30">-1</button>
+                            </div>
+                        </div>
+                        <div class="text-center border-l border-white/5">
+                            <div class="text-emerald-500 score-num mb-3" id="r-${i}-green">${s.green}</div>
+                            <div class="flex justify-center gap-1">
+                                <button onclick="changeScore(${i}, 'green', 10)" class="btn-score-sm">+10</button>
+                                <button onclick="changeScore(${i}, 'green', 1)" class="btn-score-sm">+1</button>
+                                <button onclick="changeScore(${i}, 'green', -1)" class="btn-score-sm opacity-30">-1</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            updateTotals();
+        }
+
+        function changeScore(idx, team, val) {
+            gameScores[idx][team] += val;
+            if (gameScores[idx][team] < 0) gameScores[idx][team] = 0;
+            document.getElementById(`r-${idx}-${team}`).innerText = gameScores[idx][team];
+            updateTotals();
+        }
+
+        function updateTotals() {
+            const totalRed = gameScores.reduce((a, b) => a + b.red, 0);
+            const totalGreen = gameScores.reduce((a, b) => a + b.green, 0);
+            
+            const redEl = document.getElementById('total-red');
+            const greenEl = document.getElementById('total-green');
+            
+            redEl.innerText = totalRed;
+            greenEl.innerText = totalGreen;
+
+            redEl.classList.toggle('leading', totalRed > totalGreen && totalRed > 0);
+            greenEl.classList.toggle('leading', totalGreen > totalRed && totalGreen > 0);
+        }
+
+        function showFinalResult() {
+            const tr = gameScores.reduce((a, b) => a + b.red, 0);
+            const tg = gameScores.reduce((a, b) => a + b.green, 0);
+            if (tr === 0 && tg === 0) return;
+
+            const modal = document.getElementById('winnerModal');
+            const teamEl = document.getElementById('win-team');
+            const scoreEl = document.getElementById('win-score');
+            const emojiEl = document.getElementById('win-emoji');
+
+            if (tr > tg) {
+                teamEl.innerText = "紅隊勝出";
+                teamEl.className = "text-6xl font-black mb-4 text-red-500";
+                emojiEl.innerText = "🏆";
+            } else if (tg > tr) {
+                teamEl.innerText = "綠隊勝出";
+                teamEl.className = "text-6xl font-black mb-4 text-emerald-500";
+                emojiEl.innerText = "🏆";
+            } else {
+                teamEl.innerText = "雙方平手";
+                teamEl.className = "text-6xl font-black mb-4 text-yellow-500";
+                emojiEl.innerText = "🤝";
+            }
+
+            scoreEl.innerText = `${tr} : ${tg}`;
+            modal.style.display = 'flex';
+
+            confetti({
+                particleCount: 200, spread: 80, origin: { y: 0.6 },
+                colors: ['#ff0000', '#00ff00', '#ffd700']
+            });
+        }
+
+        function resetGame() {
+            if (confirm("要重置所有分數嗎？")) {
+                gameScores = gameScores.map(() => ({ red: 0, green: 0 }));
+                renderScoreboard();
+            }
+        }
+
+        window.onload = () => { 
+            initSnow(); 
+            initGrid(); 
+            shuffleCards(); 
+            renderScoreboard();
+        };
+
+        window.onresize = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            // 重新初始化雪花位置以防斷層
+            particles.forEach(p => { p.x = Math.random()*canvas.width; p.y = Math.random()*canvas.height; });
+        };
+    </script>
+</body>
 </html>
