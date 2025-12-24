@@ -2,8 +2,8 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>聖誕歌戰 - 命運抽卡機</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>聖誕歌戰 - 命運 4x3 十二宮格</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
@@ -11,9 +11,27 @@
         body {
             font-family: 'Noto Sans TC', sans-serif;
             background: radial-gradient(circle, #1a472a 0%, #0a2a16 100%);
+            /* 修改：允許垂直捲動，禁止水平捲動 */
             overflow-x: hidden;
+            overflow-y: auto;
             color: white;
             min-height: 100vh;
+            width: 100vw;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+            touch-action: pan-y; /* 允許手勢上下滑動 */
+        }
+
+        /* 確保背景在捲動時依然覆蓋全螢幕 */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, #1a472a 0%, #0a2a16 100%);
+            z-index: -1;
         }
 
         .snow {
@@ -22,27 +40,25 @@
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none;
-            z-index: 1;
+            pointer-events: none; 
+            z-index: 5;
         }
 
-        /* 卡牌格線 */
         .card-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            max-width: 900px;
-            width: 100%;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            max-width: 600px;
+            width: 95vw;
             perspective: 1000px;
+            z-index: 10;
         }
 
-        /* 卡牌容器 */
         .card-container {
             aspect-ratio: 2 / 3;
             width: 100%;
             cursor: pointer;
             position: relative;
-            transition: transform 0.5s ease;
         }
 
         .card-inner {
@@ -62,16 +78,15 @@
             width: 100%;
             height: 100%;
             backface-visibility: hidden;
-            border-radius: 12px;
+            border-radius: 6px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            border: 2px solid #ffd700;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 1.5px solid #ffd700;
         }
 
-        /* 卡片背面 */
         .card-back {
             background: linear-gradient(135deg, #c41e3a 0%, #800e13 100%);
             z-index: 2;
@@ -79,29 +94,26 @@
 
         .card-back::after {
             content: "🎁";
-            font-size: 2.5rem;
+            font-size: 1.2rem;
         }
 
-        /* 卡片正面 */
         .card-front {
             background: white;
             color: #333;
             transform: rotateY(180deg);
-            padding: 10px;
+            padding: 4px;
             text-align: center;
-            font-size: 0.8rem;
         }
 
         .rarity-ssr { border-color: #ffd700; background: linear-gradient(135deg, #fffcf0 0%, #fff0b3 100%); }
         .rarity-sr { border-color: #c0c0c0; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); }
         .rarity-r { border-color: #cd7f32; background: white; }
 
-        .glow-ssr { box-shadow: 0 0 20px #ffd700; }
+        .glow-ssr { box-shadow: 0 0 15px #ffd700; z-index: 10; }
 
-        /* 洗牌動畫關鍵幀 */
         @keyframes shuffle {
             0% { transform: translate(0, 0); }
-            50% { transform: translate(var(--tx), var(--ty)) scale(0.8); }
+            50% { transform: translate(var(--tx), var(--ty)) scale(0.6); }
             100% { transform: translate(0, 0); }
         }
 
@@ -111,10 +123,15 @@
 
         .btn-draw {
             background: #c41e3a;
-            transition: all 0.2s;
+            box-shadow: 0 4px 0 #800e13;
+            user-select: none;
+            z-index: 20; 
+            position: relative;
         }
-        .btn-draw:hover { background: #e63946; }
-        .btn-draw:active { transform: scale(0.95); }
+        .btn-draw:active {
+            transform: translateY(2px);
+            box-shadow: none;
+        }
 
         @keyframes snowfall {
             0% { transform: translateY(-10vh) rotate(0deg); }
@@ -127,89 +144,157 @@
             animation: snowfall linear infinite;
         }
 
-        @media (max-width: 640px) {
-            .card-grid { gap: 8px; }
-            .card-back::after { font-size: 1.5rem; }
-            .reward-title { font-size: 0.9rem; }
+        #overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        #resultModal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.4s ease-out;
+            padding: 20px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
         }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen p-4">
+<body>
 
-    <!-- 隱藏的音訊資源 -->
-    <audio id="audioShuffle" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3" preload="auto"></audio>
-    <audio id="audioFlip" src="https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3" preload="auto"></audio>
-    <audio id="audioSSR" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3" preload="auto"></audio>
+    <!-- 音軌 -->
+    <audio id="audioShuffle" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3" preload="auto" crossorigin="anonymous"></audio>
+    <audio id="audioFlip" src="https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3" preload="auto" crossorigin="anonymous"></audio>
+    <audio id="audioSSR" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3" preload="auto" crossorigin="anonymous"></audio>
+
+    <div id="overlay">
+        <div class="text-7xl mb-6">🎄</div>
+        <h2 class="text-3xl font-bold mb-3 text-white">聖誕派對歌戰</h2>
+        <p class="text-yellow-400 animate-pulse mb-8">「 點擊畫面開始遊戲 」</p>
+    </div>
+
+    <!-- 結果彈窗 -->
+    <div id="resultModal" onclick="this.style.display='none'">
+        <div class="text-yellow-400 text-sm mb-2 font-bold tracking-widest">抽中獎項</div>
+        <div id="modalRarity" class="text-xs px-3 py-1 rounded-full mb-4 font-bold"></div>
+        <div id="modalTitle" class="text-4xl font-extrabold mb-4 text-center text-white drop-shadow-md"></div>
+        <div id="modalDesc" class="text-lg text-gray-200 mb-8 text-center max-w-xs"></div>
+        <div class="text-gray-400 text-xs animate-bounce mt-4">點擊任何地方關閉</div>
+    </div>
 
     <div class="snow" id="snowContainer"></div>
 
-    <div class="z-10 text-center mb-6">
-        <h1 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-1 drop-shadow-lg">聖誕命運九宮格</h1>
-        <p class="text-gray-200 text-sm">點擊洗牌後，挑選一張你的聖誕運勢！</p>
+    <div class="z-10 text-center mb-4 px-4">
+        <h1 class="text-2xl font-bold text-yellow-400 drop-shadow-lg">聖誕命運 4x3 宮格</h1>
+        <p class="text-gray-200 text-xs">決定你的唱歌挑戰</p>
     </div>
 
-    <div class="z-10 w-full max-w-2xl">
-        <div class="card-grid mb-8" id="cardGrid">
-            <!-- 卡片由 JS 生成 -->
-        </div>
+    <div class="z-10 w-full flex flex-col items-center">
+        <div class="card-grid mb-6" id="cardGrid"></div>
 
-        <div class="flex flex-col items-center gap-4">
-            <button onclick="shuffleCards()" id="shuffleBtn" class="btn-draw px-10 py-3 rounded-full text-white font-bold text-lg shadow-xl">
-                🎄 開始洗牌
+        <div class="flex flex-col items-center gap-2 relative z-20 pb-10">
+            <button id="shuffleBtn" class="btn-draw px-12 py-3 rounded-full text-white font-bold text-lg">
+                重新洗牌
             </button>
-            <div id="statusText" class="text-yellow-200 font-medium">請先點擊洗牌</div>
+            <div id="statusText" class="text-yellow-200 font-medium text-xs mt-1">請先點擊洗牌</div>
         </div>
     </div>
 
-    <!-- SSR 獲獎特效 -->
-    <div id="congrats" class="fixed inset-0 flex items-center justify-center z-50 pointer-events-none opacity-0 transition-opacity duration-500 bg-black/60">
-        <div class="text-center p-8">
-            <h2 class="text-6xl font-bold text-yellow-400 mb-4 animate-bounce">SSR!</h2>
-            <p class="text-2xl text-white font-bold">獲得超級聖誕特權！</p>
+    <div id="congrats" class="fixed inset-0 flex items-center justify-center z-50 pointer-events-none opacity-0 transition-opacity duration-500 bg-black/70">
+        <div class="text-center">
+            <h2 class="text-7xl font-bold text-yellow-400 mb-4 animate-bounce">SSR!</h2>
+            <p class="text-2xl text-white font-bold">超級奇蹟！</p>
         </div>
     </div>
 
     <script>
         const cardPool = [
-            { rarity: 'SSR', title: '聖誕歌神金卡', desc: '獲得「無限插播權」！', color: 'bg-yellow-500 text-white' },
-            { rarity: 'SSR', title: '聖誕大餐權', desc: '立刻點一份派對拼盤，大家請客！', color: 'bg-yellow-500 text-white' },
-            { rarity: 'SR', title: '馴鹿舞伴卡', desc: '指定兩位朋友在你唱歌時伴舞。', color: 'bg-gray-400 text-white' },
-            { rarity: 'SR', title: '雪橇滑行卡', desc: '獲得一次「強制切歌權」。', color: 'bg-gray-400 text-white' },
-            { rarity: 'SR', title: '伴奏大師卡', desc: '全場必須拿鈴鐺幫你打節奏。', color: 'bg-gray-400 text-white' },
-            { rarity: 'R', title: '聖誕帽懲罰', desc: '唱歌時必須全程戴著聖誕帽。', color: 'bg-orange-600 text-white' },
-            { rarity: 'R', title: '深情雪人卡', desc: '選一首情歌並用哀傷表情唱完。', color: 'bg-orange-600 text-white' },
-            { rarity: 'R', title: '禮物盒挑戰', desc: '唱歌時手裡要抱著重物。', color: 'bg-orange-600 text-white' },
-            { rarity: 'R', title: '高音雪花卡', desc: '副歌必須用假音（女高音）唱。', color: 'bg-orange-600 text-white' }
+            { rarity: 'SSR', title: '歌神金卡', desc: '獲得「無限插播權」！', color: 'bg-yellow-500 text-white' },
+            { rarity: 'SSR', title: '大餐特權', desc: '立刻點一份拼盤大家請客！', color: 'bg-yellow-500 text-white' },
+            { rarity: 'SR', title: '馴鹿舞伴', desc: '指定兩人為你伴舞。', color: 'bg-gray-400 text-white' },
+            { rarity: 'SR', title: '雪橇切歌', desc: '獲得一次「強制切歌權」。', color: 'bg-gray-400 text-white' },
+            { rarity: 'SR', title: '節奏大師', desc: '全場必須幫你拍手伴奏。', color: 'bg-gray-400 text-white' },
+            { rarity: 'SR', title: '天使合聲', desc: '指定一人為你全程和聲。', color: 'bg-gray-400 text-white' },
+            { rarity: 'R', title: '聖誕帽咒', desc: '唱歌必須全程戴聖誕帽。', color: 'bg-orange-600 text-white' },
+            { rarity: 'R', title: '憂鬱雪人', desc: '用最悲傷的表情唱嗨歌。', color: 'bg-orange-600 text-white' },
+            { rarity: 'R', title: '重禮挑戰', desc: '雙手抱著重物唱歌。', color: 'bg-orange-600 text-white' },
+            { rarity: 'R', title: '假音雪花', desc: '副歌全用假音唱。', color: 'bg-orange-600 text-white' },
+            { rarity: 'R', title: '轉圈雪球', desc: '間奏時必須原地自轉三圈。', color: 'bg-orange-600 text-white' },
+            { rarity: 'R', title: '靜默聖誕', desc: '這首歌的結尾必須用氣聲唱。', color: 'bg-orange-600 text-white' }
         ];
 
         let canFlip = false;
         let isShuffling = false;
+        let cardDataMap = [];
 
-        // 音效播放函數
+        document.getElementById('overlay').addEventListener('click', function() {
+            const self = this;
+            const audioIds = ['audioShuffle', 'audioFlip', 'audioSSR'];
+            audioIds.forEach(id => {
+                const a = document.getElementById(id);
+                if (a) {
+                    a.muted = true;
+                    a.play().then(() => {
+                        a.pause();
+                        a.muted = false;
+                        a.currentTime = 0;
+                    }).catch(err => console.warn("Audio warm up skipped:", id));
+                }
+            });
+
+            self.style.display = 'none';
+            initCards();
+            createSnow();
+            document.getElementById('statusText').innerText = "請點擊重新洗牌";
+        });
+
+        document.getElementById('shuffleBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            shuffleCards();
+        });
+
         function playSound(id) {
             const sound = document.getElementById(id);
-            if (sound) {
+            if (sound && sound.readyState >= 2) {
                 sound.currentTime = 0;
-                sound.play().catch(e => console.log("音訊播放被瀏覽器阻擋，需先有使用者互動。"));
+                const playPromise = sound.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => { console.error("Playback failed:", error); });
+                }
             }
         }
 
         function initCards() {
             const grid = document.getElementById('cardGrid');
             grid.innerHTML = '';
-            for (let i = 0; i < 9; i++) {
+            for (let i = 0; i < 12; i++) {
                 const card = document.createElement('div');
                 card.className = 'card-container';
                 card.id = `card-${i}`;
                 card.onclick = () => handleCardClick(i);
-                
                 card.innerHTML = `
                     <div class="card-inner">
                         <div class="card-back"></div>
                         <div class="card-front" id="front-${i}">
-                            <div class="rarity-tag text-[10px] font-bold px-2 py-0.5 rounded-full mb-1"></div>
-                            <div class="reward-title font-bold text-base mb-1"></div>
-                            <div class="reward-desc text-xs text-gray-500"></div>
+                            <div class="rarity-tag text-[7px] font-bold px-1 py-0.5 rounded-full mb-1"></div>
+                            <div class="reward-title font-bold text-[11px] mb-0.5 leading-tight"></div>
+                            <div class="reward-desc text-[8px] text-gray-500 leading-tight"></div>
                         </div>
                     </div>
                 `;
@@ -222,11 +307,9 @@
             isShuffling = true;
             canFlip = false;
             
-            // 播放洗牌音效
             playSound('audioShuffle');
-            
             document.querySelectorAll('.card-container').forEach(c => c.classList.remove('flipped', 'shuffling'));
-            document.getElementById('statusText').innerText = "洗牌中...";
+            document.getElementById('statusText').innerText = "命運打亂中...";
 
             const cards = document.querySelectorAll('.card-container');
             cards.forEach((card, index) => {
@@ -240,83 +323,79 @@
                 card.style.setProperty('--tx', `${centerX - cardX}px`);
                 card.style.setProperty('--ty', `${centerY - cardY}px`);
                 
-                setTimeout(() => {
-                    card.classList.add('shuffling');
-                }, index * 30);
+                setTimeout(() => card.classList.add('shuffling'), index * 20);
             });
 
             setTimeout(() => {
-                const shuffledData = [...cardPool].sort(() => Math.random() - 0.5);
-                shuffledData.forEach((data, i) => {
+                cardDataMap = [...cardPool].sort(() => Math.random() - 0.5);
+                cardDataMap.forEach((data, i) => {
                     const front = document.getElementById(`front-${i}`);
-                    const tag = front.querySelector('.rarity-tag');
-                    const title = front.querySelector('.reward-title');
-                    const desc = front.querySelector('.reward-desc');
-
+                    if (!front) return;
                     front.className = `card-front rarity-${data.rarity.toLowerCase()}`;
-                    tag.innerText = data.rarity;
-                    tag.className = `rarity-tag text-[10px] font-bold px-2 py-0.5 rounded-full mb-1 ${data.color}`;
-                    title.innerText = data.title;
-                    desc.innerText = data.desc;
+                    front.querySelector('.rarity-tag').innerText = data.rarity;
+                    front.querySelector('.rarity-tag').className = `rarity-tag text-[7px] font-bold px-1 py-0.5 rounded-full mb-1 ${data.color}`;
+                    front.querySelector('.reward-title').innerText = data.title;
+                    front.querySelector('.reward-desc').innerText = data.desc;
                     front.dataset.rarity = data.rarity;
                 });
 
                 isShuffling = false;
                 canFlip = true;
-                document.getElementById('statusText').innerText = "洗牌完成！請選一張卡";
+                document.getElementById('statusText').innerText = "洗牌完成！請選一張";
                 cards.forEach(c => c.classList.remove('shuffling'));
             }, 1000);
         }
 
         function handleCardClick(index) {
             if (!canFlip || isShuffling) return;
-            
             const card = document.getElementById(`card-${index}`);
             if (card.classList.contains('flipped')) return;
 
-            // 播放翻牌音效
+            const data = cardDataMap[index];
             playSound('audioFlip');
-
             card.classList.add('flipped');
-            const rarity = document.getElementById(`front-${index}`).dataset.rarity;
-
-            if (rarity === 'SSR') {
-                // 延遲一點播放 SSR 特效音
-                setTimeout(() => playSound('audioSSR'), 300);
-                document.getElementById(`front-${index}`).classList.add('glow-ssr');
-                showCongrats();
-            }
             
-            document.getElementById('statusText').innerText = "命運已定！";
+            const front = document.getElementById(`front-${index}`);
+            
+            setTimeout(() => {
+                showResultModal(data);
+                if (data.rarity === 'SSR') {
+                    playSound('audioSSR');
+                    front.classList.add('glow-ssr');
+                    showCongrats();
+                }
+            }, 700);
+        }
+
+        function showResultModal(data) {
+            const modal = document.getElementById('resultModal');
+            const rTag = document.getElementById('modalRarity');
+            rTag.innerText = data.rarity;
+            rTag.className = `text-xs px-3 py-1 rounded-full mb-4 font-bold ${data.color}`;
+            document.getElementById('modalTitle').innerText = data.title;
+            document.getElementById('modalDesc').innerText = data.desc;
+            modal.style.display = 'flex';
         }
 
         function showCongrats() {
             const congrats = document.getElementById('congrats');
             congrats.style.opacity = '1';
-            setTimeout(() => {
-                congrats.style.opacity = '0';
-            }, 2500);
+            setTimeout(() => congrats.style.opacity = '0', 2500);
         }
 
         function createSnow() {
             const container = document.getElementById('snowContainer');
-            for (let i = 0; i < 40; i++) {
+            container.innerHTML = '';
+            for (let i = 0; i < 30; i++) {
                 const flake = document.createElement('div');
                 flake.className = 'flake';
                 flake.innerHTML = '❄';
                 flake.style.left = Math.random() * 100 + 'vw';
-                flake.style.top = '-5vh';
                 flake.style.animationDuration = (Math.random() * 3 + 2) + 's';
                 flake.style.opacity = Math.random();
-                flake.style.fontSize = (Math.random() * 10 + 10) + 'px';
                 container.appendChild(flake);
             }
         }
-
-        window.onload = () => {
-            createSnow();
-            initCards();
-        };
     </script>
 </body>
 </html>
