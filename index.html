@@ -3,132 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>聖誕歌戰 - 命運 4x3 十二宮格</title>
+    <title>聖誕歌戰 - 官方系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
         
         body {
             font-family: 'Noto Sans TC', sans-serif;
             background: radial-gradient(circle, #1a472a 0%, #0a2a16 100%);
-            overflow-x: hidden;
-            overflow-y: auto;
             color: white;
             min-height: 100vh;
-            width: 100vw;
             margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 10px 0;
-            touch-action: pan-y;
+            overflow-x: hidden;
         }
 
-        /* 計分板樣式 */
-        .score-panel {
-            display: flex;
-            justify-content: space-around;
-            width: 95vw;
-            max-width: 600px;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 15px;
-            margin-bottom: 20px;
-            border: 2px solid rgba(255, 215, 0, 0.3);
-            z-index: 50;
+        /* 導覽切換 */
+        .nav-tab {
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            opacity: 0.6;
         }
-        .team-box { text-align: center; flex: 1; }
-        .team-red { color: #ff4d4d; border-right: 1px solid rgba(255,255,255,0.2); }
-        .team-green { color: #4dff88; }
-        .score-val { font-size: 2.5rem; font-weight: 800; text-shadow: 0 0 10px rgba(255,255,255,0.2); }
-        .manual-btn {
-            font-size: 14px;
-            padding: 4px 12px;
-            border-radius: 5px;
-            margin: 2px;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid currentColor;
-            transition: all 0.2s;
+        .nav-tab.active {
+            color: #ffd700;
+            border-bottom: 3px solid #ffd700;
+            opacity: 1;
         }
-        .manual-btn:active { background: currentColor; color: black; transform: scale(0.9); }
 
+        /* 抽卡機樣式 */
         .card-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            max-width: 600px;
-            width: 95vw;
+            gap: 10px;
             perspective: 1000px;
-            z-index: 10;
         }
-
-        .card-container {
-            aspect-ratio: 2 / 3;
-            width: 100%;
-            cursor: pointer;
-            position: relative;
-        }
-
+        .card-container { aspect-ratio: 2 / 3; cursor: pointer; position: relative; width: 100%; }
         .card-inner {
-            position: relative;
-            width: 100%;
-            height: 100%;
+            position: relative; width: 100%; height: 100%;
             transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
             transform-style: preserve-3d;
         }
-
-        .card-container.flipped .card-inner {
-            transform: rotateY(180deg);
-        }
-
+        .card-container.flipped .card-inner { transform: rotateY(180deg); }
         .card-front, .card-back {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            backface-visibility: hidden;
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            position: absolute; width: 100%; height: 100%;
+            backface-visibility: hidden; border-radius: 8px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
             border: 1.5px solid #ffd700;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
-
-        .card-back {
-            background: linear-gradient(135deg, #c41e3a 0%, #800e13 100%);
+        .card-back { 
+            background: linear-gradient(135deg, #c41e3a 0%, #800e13 100%); 
             z-index: 2;
         }
-
-        .card-back::after {
-            content: "🎁";
-            font-size: 1.5rem;
+        .card-back::after { content: "🎁"; font-size: 1.5rem; }
+        .card-front { 
+            background: white; 
+            color: #333; 
+            transform: rotateY(180deg); 
+            padding: 8px; 
+            text-align: center; 
         }
 
-        .card-front {
-            background: white;
-            color: #333;
-            transform: rotateY(180deg);
-            padding: 6px;
+        /* 結算表樣式 */
+        input[type="number"] {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 10px;
+            color: white;
             text-align: center;
+            width: 100%;
+            font-size: 1.1rem;
+            font-weight: bold;
         }
 
-        .rarity-ssr { border-color: #ffd700; background: linear-gradient(135deg, #fffcf0 0%, #fff0b3 100%); }
-        .rarity-sr { border-color: #c0c0c0; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); }
-        .rarity-r { border-color: #cd7f32; background: white; }
-        .rarity-trap { border-color: #ff0000; background: linear-gradient(135deg, #ffe5e5 0%, #ffcccc 100%); }
-
-        #resultModal {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.95);
-            z-index: 200;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+        /* Modal 樣式 */
+        #resultModal, #winnerModal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 500;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
             padding: 20px;
+            backdrop-filter: blur(10px);
         }
 
         .btn-action {
@@ -137,144 +90,156 @@
             padding: 12px 30px;
             border-radius: 99px;
             font-weight: bold;
-            margin-top: 15px;
             box-shadow: 0 4px 15px rgba(196, 30, 58, 0.4);
+            margin-top: 20px;
+            transition: transform 0.1s;
         }
-
-        #overlay {
-            position: fixed; inset: 0; background: black; z-index: 300;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            cursor: pointer;
-        }
+        .btn-action:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
 
-    <audio id="audioShuffle" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3" preload="auto" crossorigin="anonymous"></audio>
-    <audio id="audioFlip" src="https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3" preload="auto" crossorigin="anonymous"></audio>
-    <audio id="audioSSR" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3" preload="auto" crossorigin="anonymous"></audio>
+    <audio id="audioFlip" src="https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3" preload="auto"></audio>
 
-    <div id="overlay">
-        <div class="text-7xl mb-6">🎄</div>
-        <h2 class="text-3xl font-bold mb-3 text-white">聖誕命運歌戰</h2>
-        <p class="text-yellow-400 animate-pulse">「 點擊畫面開始遊戲 」</p>
-    </div>
+    <!-- 頂部導覽 -->
+    <nav class="flex justify-center gap-8 bg-black/60 backdrop-blur-md py-4 sticky top-0 z-[100] border-b border-white/10">
+        <button onclick="switchPage('game')" id="tab-game" class="nav-tab active font-bold px-4 pb-1 text-lg">🎲 命運抽卡</button>
+        <button onclick="switchPage('results')" id="tab-results" class="nav-tab font-bold px-4 pb-1 text-lg">🏆 五場戰報</button>
+    </nav>
 
-    <!-- 計分面板 -->
-    <div class="score-panel">
-        <div class="team-box team-red">
-            <div class="text-xs font-bold opacity-70">紅隊 RED</div>
-            <div class="score-val" id="score-red">0</div>
-            <div class="flex justify-center mt-1">
-                <button class="manual-btn" onclick="updateScore('red', 10)">+10</button>
-                <button class="manual-btn" onclick="updateScore('red', -10)">-10</button>
-            </div>
+    <!-- 頁面 1: 抽卡機 -->
+    <main id="page-game" class="flex flex-col items-center p-4 max-w-lg mx-auto">
+        <!-- 僅保留標題文字 -->
+        <div class="header-text w-full text-center mb-8 mt-6">
+            <h1 class="text-3xl font-black text-yellow-500 tracking-[0.2em] drop-shadow-lg">聖誕紅白大賽</h1>
+            <div class="h-1 w-24 bg-red-600 mx-auto mt-2 rounded-full"></div>
         </div>
-        <div class="team-box team-green">
-            <div class="text-xs font-bold opacity-70">綠隊 GREEN</div>
-            <div class="score-val" id="score-green">0</div>
-            <div class="flex justify-center mt-1">
-                <button class="manual-btn" onclick="updateScore('green', 10)">+10</button>
-                <button class="manual-btn" onclick="updateScore('green', -10)">-10</button>
-            </div>
-        </div>
-    </div>
 
+        <div id="statusText" class="text-yellow-400/80 font-bold mb-4 animate-pulse text-sm">請點擊洗牌開始遊戲</div>
+        
+        <div class="card-grid w-full mb-10" id="cardGrid"></div>
+
+        <div class="flex flex-col items-center gap-4 w-full">
+            <button id="shuffleBtn" onclick="shuffleCards()" class="bg-[#c41e3a] hover:bg-red-700 active:scale-95 w-full py-4 rounded-full text-white font-black text-xl shadow-xl transition-all">🎲 重新洗牌</button>
+            <p class="text-[10px] text-gray-500">點擊卡片即可揭曉命運</p>
+        </div>
+    </main>
+
+    <!-- 頁面 2: 五回合結算 -->
+    <main id="page-results" class="hidden flex flex-col items-center p-4 max-w-lg mx-auto">
+        <div class="w-full bg-white/5 p-6 rounded-3xl border border-white/10 mt-4">
+            <h2 class="text-center text-yellow-500 font-black text-2xl mb-6">總決賽計分表</h2>
+            <div class="grid grid-cols-3 gap-4 mb-4 text-center text-sm font-bold text-gray-400">
+                <div>ROUND</div><div class="text-red-500">RED</div><div class="text-green-500">GREEN</div>
+            </div>
+            <div id="roundsInputs" class="space-y-4"></div>
+            
+            <div class="grid grid-cols-3 gap-4 mt-10 pt-6 border-t-2 border-yellow-500/50 text-center">
+                <div class="text-yellow-500 font-black text-xl">TOTAL</div>
+                <div id="total-red" class="text-3xl font-black text-red-500">0</div>
+                <div id="total-green" class="text-3xl font-black text-green-500">0</div>
+            </div>
+            
+            <button onclick="checkFinalWinner()" class="w-full mt-10 bg-yellow-600 hover:bg-yellow-500 py-4 rounded-2xl text-black font-black text-xl shadow-2xl transition-all">🏆 揭曉最終贏家</button>
+        </div>
+    </main>
+
+    <!-- 各種 Modals -->
     <div id="resultModal">
-        <div id="modalLabel" class="text-yellow-400 text-sm mb-2 font-bold tracking-widest">抽中獎項</div>
-        <div id="modalRarity" class="text-xs px-3 py-1 rounded-full mb-4 font-bold"></div>
-        <div id="modalTitle" class="text-4xl font-extrabold mb-4 text-center text-white"></div>
-        <div id="modalDesc" class="text-lg text-gray-200 mb-6 text-center max-w-xs"></div>
-        <div id="modalActionArea" class="flex flex-col gap-3"></div>
-        <button onclick="document.getElementById('resultModal').style.display='none'" class="mt-10 text-gray-400 text-xs border-b border-gray-600">關閉視窗</button>
+        <div class="bg-white/10 p-8 rounded-3xl border border-white/20 text-center max-w-xs w-full">
+            <div id="modalRarity" class="text-xs font-bold px-3 py-1 rounded-full mb-4 inline-block"></div>
+            <div id="modalTitle" class="text-4xl font-black mb-4 text-white leading-tight"></div>
+            <div id="modalDesc" class="text-gray-300 mb-8 text-lg"></div>
+            <div id="modalActionArea"></div>
+            <button onclick="closeModal()" class="mt-12 text-gray-500 text-sm underline">返回宮格</button>
+        </div>
     </div>
 
-    <div class="z-10 text-center mb-4">
-        <h1 class="text-xl font-bold text-yellow-400">命運 4x3 十二宮格</h1>
-    </div>
-
-    <div class="card-grid mb-6" id="cardGrid"></div>
-
-    <div class="flex flex-col items-center gap-3 pb-10">
-        <button id="shuffleBtn" class="bg-[#c41e3a] px-10 py-3 rounded-full text-white font-bold shadow-lg hover:bg-red-700 transition-colors">🎲 重新洗牌</button>
-        <button onclick="resetAll()" class="text-[10px] text-gray-500 underline mt-2">重置所有分數與卡片</button>
-        <div id="statusText" class="text-yellow-200 text-[10px] h-4">請點擊洗牌開始</div>
+    <div id="winnerModal">
+        <div class="text-9xl mb-6">👑</div>
+        <div id="winnerName" class="text-6xl font-black mb-4 text-yellow-500"></div>
+        <div id="winnerFinalScore" class="text-3xl font-mono mb-12 text-white"></div>
+        <button onclick="location.reload()" class="bg-red-600 px-12 py-4 rounded-full font-black text-xl">開啟新賽季</button>
     </div>
 
     <script>
-        let scores = { red: 0, green: 0 };
-        
+        function switchPage(page) {
+            document.getElementById('page-game').classList.toggle('hidden', page !== 'game');
+            document.getElementById('page-results').classList.toggle('hidden', page !== 'results');
+            document.getElementById('tab-game').classList.toggle('active', page === 'game');
+            document.getElementById('tab-results').classList.toggle('active', page === 'results');
+        }
+
+        const roundsInputs = document.getElementById('roundsInputs');
+        for (let i = 1; i <= 5; i++) {
+            roundsInputs.innerHTML += `
+                <div class="grid grid-cols-3 gap-4 items-center">
+                    <div class="text-gray-500 font-bold italic">R${i}</div>
+                    <input type="number" class="r-in" placeholder="0" oninput="calc()">
+                    <input type="number" class="g-in" placeholder="0" oninput="calc()">
+                </div>
+            `;
+        }
+
+        function calc() {
+            let r = 0, g = 0;
+            document.querySelectorAll('.r-in').forEach(i => r += parseInt(i.value)||0);
+            document.querySelectorAll('.g-in').forEach(i => g += parseInt(i.value)||0);
+            document.getElementById('total-red').innerText = r;
+            document.getElementById('total-green').innerText = g;
+        }
+
+        function checkFinalWinner() {
+            const r = parseInt(document.getElementById('total-red').innerText);
+            const g = parseInt(document.getElementById('total-green').innerText);
+            if(r===0 && g===0) return alert("請先輸入比賽分數！");
+            document.getElementById('winnerName').innerText = r > g ? "紅隊贏了！" : (g > r ? "綠隊贏了！" : "雙方平手！");
+            document.getElementById('winnerFinalScore').innerText = `${r} : ${g}`;
+            document.getElementById('winnerModal').style.display = 'flex';
+        }
+
         const trapSongs = [
-            { title: '《舞女》', desc: '【命運強制】改唱這首，並加上性感舞步！', ktvCode: '40288' },
-            { title: '《你是我的花朵》', desc: '【命運強制】改唱這首，全場一起跳花朵舞！', ktvCode: '31045' },
-            { title: '《雞攻擊之術》', desc: '【命運強制】要用「雞」的聲音唱一段！', ytSearch: 'Chicken Attack' },
-            { title: '《保庇》', desc: '【命運強制】改唱這首，副歌要完美重現手勢！', ktvCode: '12345' },
-            { title: '《轉吧七彩霓虹燈》', desc: '【命運強制】唱這首時要全場繞著你轉！', ktvCode: '66688' },
-            { title: '《失戀陣線聯盟》', desc: '【命運強制】找一位舞伴一起跳經典舞步！', ktvCode: '55432' }
+            { title: '舞女', desc: '【強制命運】改唱這首，並加上性感舞步！', code: '40288' },
+            { title: '你是我的花朵', desc: '【強制命運】全場一起跳花朵舞！', code: '31045' },
+            { title: '雞攻擊之術', desc: '【強制命運】要用「雞」的聲音唱一段！', search: 'Chicken Attack' },
+            { title: '保庇', desc: '【強制命運】副歌要完美重現手勢！', code: '12345' },
+            { title: '轉吧七彩霓虹燈', desc: '【強制命運】唱這首時要全場繞著你轉！', code: '66688' }
         ];
 
-        const baseCardPool = [
-            { rarity: 'SSR', title: '歌神金卡', desc: '加 50 分或獲得插播權！', color: 'bg-yellow-500 text-white' },
-            { rarity: 'TRAP', title: '？？？', desc: '揭曉你的命運歌單...', color: 'bg-red-600 text-white' },
-            { rarity: 'SR', title: '馴鹿舞伴', desc: '加 20 分並指定伴舞。', color: 'bg-gray-400 text-white' },
-            { rarity: 'TRAP', title: '？？？', desc: '揭曉你的命運歌單...', color: 'bg-red-600 text-white' },
-            { rarity: 'SR', title: '節奏大師', desc: '加 20 分。', color: 'bg-gray-400 text-white' },
-            { rarity: 'SR', title: '天使合聲', desc: '加 20 分。', color: 'bg-gray-400 text-white' },
-            { rarity: 'R', title: '聖誕帽咒', desc: '加 10 分但要戴帽子。', color: 'bg-orange-600 text-white' },
-            { rarity: 'TRAP', title: '？？？', desc: '揭曉你的命運歌單...', color: 'bg-red-600 text-white' },
-            { rarity: 'R', title: '重禮挑戰', desc: '加 10 分。', color: 'bg-orange-600 text-white' },
-            { rarity: 'R', title: '假音雪花', desc: '加 10 分。', color: 'bg-orange-600 text-white' },
-            { rarity: 'R', title: '轉圈雪球', desc: '加 10 分。', color: 'bg-orange-600 text-white' },
-            { rarity: 'R', title: '靜默聖誕', desc: '加 10 分。', color: 'bg-orange-600 text-white' }
+        const cardPool = [
+            { rarity: 'SSR', title: '歌神金卡', desc: '直接加 50 分或獲得插播權！', color: 'bg-yellow-500 text-black' },
+            { rarity: 'TRAP', title: '命運反轉', desc: '揭曉你的惡搞歌單...', color: 'bg-red-600 text-white' },
+            { rarity: 'SR', title: '馴鹿舞伴', desc: '加 20 分並指定隊友伴舞。', color: 'bg-indigo-500 text-white' },
+            { rarity: 'TRAP', title: '命運反轉', desc: '揭曉你的惡搞歌單...', color: 'bg-red-600 text-white' },
+            { rarity: 'SR', title: '天使合聲', desc: '加 20 分。', color: 'bg-indigo-500 text-white' },
+            { rarity: 'R', title: '聖誕帽咒', desc: '加 10 分但要戴帽子唱。', color: 'bg-orange-500 text-white' },
+            { rarity: 'TRAP', title: '命運反轉', desc: '揭曉你的惡搞歌單...', color: 'bg-red-600 text-white' },
+            { rarity: 'R', title: '重禮挑戰', desc: '加 10 分。', color: 'bg-orange-500 text-white' },
+            { rarity: 'R', title: '假音雪花', desc: '加 10 分。', color: 'bg-orange-500 text-white' },
+            { rarity: 'R', title: '轉圈雪球', desc: '加 10 分。', color: 'bg-orange-500 text-white' },
+            { rarity: 'R', title: '靜默聖誕', desc: '加 10 分。', color: 'bg-orange-500 text-white' },
+            { rarity: 'R', title: '歡樂頌', desc: '加 10 分。', color: 'bg-orange-500 text-white' }
         ];
 
+        let currentCards = [];
         let canFlip = false;
         let isShuffling = false;
-        let cardDataMap = [];
-        let usedTrapIndices = [];
-
-        window.onload = () => {
-            initCards();
-            // 綁定按鈕點擊事件
-            document.getElementById('shuffleBtn').onclick = shuffleCards;
-        };
-
-        document.getElementById('overlay').onclick = function() {
-            this.style.display = 'none';
-        };
-
-        function updateScore(team, val) {
-            scores[team] += val;
-            document.getElementById(`score-${team}`).innerText = scores[team];
-        }
-
-        function resetAll() {
-            if(confirm("確定要重置所有數據嗎？")) {
-                scores = { red: 0, green: 0 };
-                document.getElementById(`score-red`).innerText = 0;
-                document.getElementById(`score-green`).innerText = 0;
-                shuffleCards();
-            }
-        }
 
         function initCards() {
             const grid = document.getElementById('cardGrid');
             grid.innerHTML = '';
-            for (let i = 0; i < 12; i++) {
-                const card = document.createElement('div');
-                card.className = 'card-container';
-                card.id = `container-${i}`;
-                card.onclick = () => handleCardClick(i);
-                card.innerHTML = `
-                    <div class="card-inner">
-                        <div class="card-back"></div>
-                        <div class="card-front" id="front-${i}">
-                            <div class="rarity-tag text-[8px] font-bold px-1.5 py-0.5 rounded-full mb-1"></div>
-                            <div class="reward-title font-bold text-[12px] mb-1"></div>
-                            <div class="reward-desc text-[9px] text-gray-500"></div>
+            for(let i=0; i<12; i++) {
+                grid.innerHTML += `
+                    <div class="card-container" onclick="handleFlip(${i})" id="c-${i}">
+                        <div class="card-inner">
+                            <div class="card-back"></div>
+                            <div class="card-front" id="f-${i}">
+                                <div class="rarity text-[10px] font-bold px-2 py-0.5 rounded-full mb-2"></div>
+                                <div class="title font-bold text-sm mb-1"></div>
+                                <div class="desc text-[10px] text-gray-500 leading-tight"></div>
+                            </div>
                         </div>
                     </div>`;
-                grid.appendChild(card);
             }
         }
 
@@ -282,96 +247,77 @@
             if (isShuffling) return;
             isShuffling = true;
             canFlip = false;
-            
-            document.getElementById('statusText').innerText = "洗牌中...";
-            
-            // 先翻回背面
             document.querySelectorAll('.card-container').forEach(c => c.classList.remove('flipped'));
-            
-            const audio = document.getElementById('audioShuffle');
-            if (audio) { audio.currentTime = 0; audio.play().catch(()=>{}); }
-
-            // 延遲更新內容以配合翻轉動畫
+            document.getElementById('statusText').innerText = "洗牌中...";
             setTimeout(() => {
-                cardDataMap = [...baseCardPool].sort(() => Math.random() - 0.5);
-                cardDataMap.forEach((data, i) => {
-                    const front = document.getElementById(`front-${i}`);
+                currentCards = [...cardPool].sort(() => Math.random() - 0.5);
+                currentCards.forEach((data, i) => {
+                    const front = document.getElementById(`f-${i}`);
                     if (front) {
-                        const tag = front.querySelector('.rarity-tag');
-                        tag.innerText = data.rarity === 'TRAP' ? '強制曲目' : data.rarity;
-                        tag.className = `rarity-tag text-[8px] font-bold px-1.5 py-0.5 rounded-full mb-1 ${data.color}`;
-                        front.querySelector('.reward-title').innerText = data.title;
-                        front.querySelector('.reward-desc').innerText = data.desc;
+                        const rarityEl = front.querySelector('.rarity');
+                        rarityEl.innerText = data.rarity;
+                        rarityEl.className = `rarity text-[10px] font-bold px-2 py-0.5 rounded-full mb-2 ${data.color}`;
+                        front.querySelector('.title').innerText = data.title;
+                        front.querySelector('.desc').innerText = data.desc;
                     }
                 });
-                
-                isShuffling = false;
                 canFlip = true;
-                document.getElementById('statusText').innerText = "洗牌完成！請選一張命運之牌";
+                isShuffling = false;
+                document.getElementById('statusText').innerText = "🌟 請選擇一張命運卡 🌟";
             }, 600);
         }
 
-        function handleCardClick(i) {
-            if (!canFlip || isShuffling) return;
-            const container = document.getElementById(`container-${i}`);
-            if (!container || container.classList.contains('flipped')) return;
-
-            let data = {...cardDataMap[i]};
-            
-            // 如果是 TRAP，從歌庫抽歌
-            if (data.rarity === 'TRAP') {
-                if (usedTrapIndices.length >= trapSongs.length) usedTrapIndices = [];
-                let r; do { r = Math.floor(Math.random() * trapSongs.length); } while (usedTrapIndices.includes(r));
-                usedTrapIndices.push(r);
-                const trap = trapSongs[r];
-                data.title = trap.title; 
-                data.desc = trap.desc;
-                data.ktvCode = trap.ktvCode; 
-                data.ytSearch = trap.ytSearch;
-                
-                const front = document.getElementById(`front-${i}`);
+        function handleFlip(i) {
+            if(!canFlip || isShuffling) return;
+            const card = document.getElementById(`c-${i}`);
+            if(!card || card.classList.contains('flipped')) return;
+            const flipAudio = document.getElementById('audioFlip');
+            if (flipAudio) flipAudio.play().catch(()=>{});
+            card.classList.add('flipped');
+            let data = {...currentCards[i]};
+            if(data.rarity === 'TRAP') {
+                const song = trapSongs[Math.floor(Math.random() * trapSongs.length)];
+                data.title = song.title;
+                data.desc = song.desc;
+                data.code = song.code;
+                data.search = song.search;
+                const front = document.getElementById(`f-${i}`);
                 if (front) {
-                    front.querySelector('.reward-title').innerText = data.title;
-                    front.querySelector('.reward-desc').innerText = data.desc;
+                    front.querySelector('.title').innerText = data.title;
+                    front.querySelector('.desc').innerText = data.desc;
                 }
             }
-
-            const flipAudio = document.getElementById('audioFlip');
-            if (flipAudio) { flipAudio.currentTime = 0; flipAudio.play().catch(()=>{}); }
-            
-            container.classList.add('flipped');
-            
-            setTimeout(() => {
-                showModal(data);
-                if (data.rarity === 'SSR') {
-                    const ssrAudio = document.getElementById('audioSSR');
-                    if(ssrAudio) ssrAudio.play().catch(()=>{});
-                }
-            }, 600);
+            setTimeout(() => showResultModal(data), 800);
         }
 
-        function showModal(data) {
+        function showResultModal(data) {
             const modal = document.getElementById('resultModal');
-            document.getElementById('modalLabel').innerText = data.rarity === 'TRAP' ? "🚨 命運反轉 🚨" : "抽中獎項";
-            document.getElementById('modalRarity').innerText = data.rarity;
-            document.getElementById('modalRarity').className = `text-xs px-3 py-1 rounded-full mb-4 font-bold ${data.color}`;
+            const rarity = document.getElementById('modalRarity');
+            rarity.innerText = data.rarity === 'TRAP' ? "🚨 命運曲目" : data.rarity;
+            rarity.className = `text-xs font-bold px-3 py-1 rounded-full mb-4 inline-block ${data.color}`;
             document.getElementById('modalTitle').innerText = data.title;
             document.getElementById('modalDesc').innerText = data.desc;
-            
             const area = document.getElementById('modalActionArea');
             area.innerHTML = '';
-            if (data.ktvCode || data.ytSearch) {
+            if(data.code || data.search) {
                 const btn = document.createElement('button');
                 btn.className = 'btn-action';
-                btn.innerText = data.ktvCode ? `KTV 編號：${data.ktvCode}` : `YouTube 搜尋播放`;
+                btn.innerText = data.code ? `🎤 KTV 編號：${data.code}` : `📺 搜尋 YouTube`;
                 btn.onclick = () => {
-                    const q = data.ytSearch || data.title;
+                    const q = data.search || data.title;
                     window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`, '_blank');
                 };
                 area.appendChild(btn);
             }
             modal.style.display = 'flex';
         }
+
+        function closeModal() { document.getElementById('resultModal').style.display = 'none'; }
+
+        window.onload = () => {
+            initCards();
+            shuffleCards();
+        };
     </script>
 </body>
 </html>
