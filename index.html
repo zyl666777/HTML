@@ -20,27 +20,38 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px 0;
+            padding: 10px 0;
             touch-action: pan-y;
         }
 
-        body::before {
-            content: "";
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle, #1a472a 0%, #0a2a16 100%);
-            z-index: -1;
+        /* 計分板樣式 */
+        .score-panel {
+            display: flex;
+            justify-content: space-around;
+            width: 95vw;
+            max-width: 600px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            z-index: 50;
         }
-
-        .snow {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none; 
-            z-index: 5;
+        .team-box { text-align: center; flex: 1; }
+        .team-red { color: #ff4d4d; border-right: 1px solid rgba(255,255,255,0.2); }
+        .team-green { color: #4dff88; }
+        .score-val { font-size: 2.5rem; font-weight: 800; text-shadow: 0 0 10px rgba(255,255,255,0.2); }
+        .manual-btn {
+            font-size: 14px;
+            padding: 4px 12px;
+            border-radius: 5px;
+            margin: 2px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid currentColor;
+            transition: all 0.2s;
         }
+        .manual-btn:active { background: currentColor; color: black; transform: scale(0.9); }
 
         .card-grid {
             display: grid;
@@ -76,7 +87,7 @@
             width: 100%;
             height: 100%;
             backface-visibility: hidden;
-            border-radius: 6px;
+            border-radius: 8px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -92,14 +103,14 @@
 
         .card-back::after {
             content: "🎁";
-            font-size: 1.2rem;
+            font-size: 1.5rem;
         }
 
         .card-front {
             background: white;
             color: #333;
             transform: rotateY(180deg);
-            padding: 4px;
+            padding: 6px;
             text-align: center;
         }
 
@@ -108,47 +119,32 @@
         .rarity-r { border-color: #cd7f32; background: white; }
         .rarity-trap { border-color: #ff0000; background: linear-gradient(135deg, #ffe5e5 0%, #ffcccc 100%); }
 
-        .glow-ssr { box-shadow: 0 0 15px #ffd700; z-index: 10; }
-
-        @keyframes shuffle {
-            0% { transform: translate(0, 0); }
-            50% { transform: translate(var(--tx), var(--ty)) scale(0.6); }
-            100% { transform: translate(0, 0); }
-        }
-
-        .shuffling {
-            animation: shuffle 0.6s ease-in-out;
-        }
-
         #resultModal {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.95);
             z-index: 200;
             display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            animation: fadeIn 0.4s ease-out;
             padding: 20px;
         }
 
         .btn-action {
             background: #c41e3a;
             color: white;
-            padding: 10px 25px;
+            padding: 12px 30px;
             border-radius: 99px;
             font-weight: bold;
             margin-top: 15px;
             box-shadow: 0 4px 15px rgba(196, 30, 58, 0.4);
-            transition: all 0.2s;
         }
-        
-        .btn-action:active { transform: scale(0.95); }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.9); }
-            to { opacity: 1; transform: scale(1); }
+        #overlay {
+            position: fixed; inset: 0; background: black; z-index: 300;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -160,44 +156,54 @@
 
     <div id="overlay">
         <div class="text-7xl mb-6">🎄</div>
-        <h2 class="text-3xl font-bold mb-3 text-white">聖誕派對歌戰</h2>
+        <h2 class="text-3xl font-bold mb-3 text-white">聖誕命運歌戰</h2>
         <p class="text-yellow-400 animate-pulse">「 點擊畫面開始遊戲 」</p>
     </div>
 
-    <!-- 結果彈窗 -->
+    <!-- 計分面板 -->
+    <div class="score-panel">
+        <div class="team-box team-red">
+            <div class="text-xs font-bold opacity-70">紅隊 RED</div>
+            <div class="score-val" id="score-red">0</div>
+            <div class="flex justify-center mt-1">
+                <button class="manual-btn" onclick="updateScore('red', 10)">+10</button>
+                <button class="manual-btn" onclick="updateScore('red', -10)">-10</button>
+            </div>
+        </div>
+        <div class="team-box team-green">
+            <div class="text-xs font-bold opacity-70">綠隊 GREEN</div>
+            <div class="score-val" id="score-green">0</div>
+            <div class="flex justify-center mt-1">
+                <button class="manual-btn" onclick="updateScore('green', 10)">+10</button>
+                <button class="manual-btn" onclick="updateScore('green', -10)">-10</button>
+            </div>
+        </div>
+    </div>
+
     <div id="resultModal">
         <div id="modalLabel" class="text-yellow-400 text-sm mb-2 font-bold tracking-widest">抽中獎項</div>
         <div id="modalRarity" class="text-xs px-3 py-1 rounded-full mb-4 font-bold"></div>
         <div id="modalTitle" class="text-4xl font-extrabold mb-4 text-center text-white"></div>
         <div id="modalDesc" class="text-lg text-gray-200 mb-6 text-center max-w-xs"></div>
-        
-        <!-- 點歌按鈕 -->
         <div id="modalActionArea" class="flex flex-col gap-3"></div>
-        
-        <button onclick="document.getElementById('resultModal').style.display='none'" class="mt-10 text-gray-400 text-xs border-b border-gray-600">
-            關閉視窗
-        </button>
+        <button onclick="document.getElementById('resultModal').style.display='none'" class="mt-10 text-gray-400 text-xs border-b border-gray-600">關閉視窗</button>
     </div>
 
-    <div class="snow" id="snowContainer"></div>
-
-    <div class="z-10 text-center mb-4 mt-4">
-        <h1 class="text-2xl font-bold text-yellow-400 drop-shadow-lg">聖誕命運 4x3 宮格</h1>
-        <p class="text-gray-200 text-xs">決定你的唱歌挑戰</p>
+    <div class="z-10 text-center mb-4">
+        <h1 class="text-xl font-bold text-yellow-400">命運 4x3 十二宮格</h1>
     </div>
 
-    <div class="z-10 w-full flex flex-col items-center">
-        <div class="card-grid mb-6" id="cardGrid"></div>
-        <div class="flex flex-col items-center pb-10">
-            <button id="shuffleBtn" class="bg-[#c41e3a] px-12 py-3 rounded-full text-white font-bold text-lg shadow-lg">
-                重新洗牌
-            </button>
-            <div id="statusText" class="text-yellow-200 text-xs mt-2">請先點擊洗牌</div>
-        </div>
+    <div class="card-grid mb-6" id="cardGrid"></div>
+
+    <div class="flex flex-col items-center gap-3 pb-10">
+        <button id="shuffleBtn" class="bg-[#c41e3a] px-10 py-3 rounded-full text-white font-bold shadow-lg hover:bg-red-700 transition-colors">🎲 重新洗牌</button>
+        <button onclick="resetAll()" class="text-[10px] text-gray-500 underline mt-2">重置所有分數與卡片</button>
+        <div id="statusText" class="text-yellow-200 text-[10px] h-4">請點擊洗牌開始</div>
     </div>
 
     <script>
-        // --- 設定搞怪歌庫 ---
+        let scores = { red: 0, green: 0 };
+        
         const trapSongs = [
             { title: '《舞女》', desc: '【命運強制】改唱這首，並加上性感舞步！', ktvCode: '40288' },
             { title: '《你是我的花朵》', desc: '【命運強制】改唱這首，全場一起跳花朵舞！', ktvCode: '31045' },
@@ -207,57 +213,52 @@
             { title: '《失戀陣線聯盟》', desc: '【命運強制】找一位舞伴一起跳經典舞步！', ktvCode: '55432' }
         ];
 
-        let usedTrapIndices = [];
-
-        function getNextTrapSong() {
-            if (usedTrapIndices.length >= trapSongs.length) usedTrapIndices = [];
-            let randomIndex;
-            do {
-                randomIndex = Math.floor(Math.random() * trapSongs.length);
-            } while (usedTrapIndices.includes(randomIndex));
-            usedTrapIndices.push(randomIndex);
-            return trapSongs[randomIndex];
-        }
-
         const baseCardPool = [
-            { rarity: 'SSR', title: '歌神金卡', desc: '獲得「無限插播權」！', color: 'bg-yellow-500 text-white' },
+            { rarity: 'SSR', title: '歌神金卡', desc: '加 50 分或獲得插播權！', color: 'bg-yellow-500 text-white' },
             { rarity: 'TRAP', title: '？？？', desc: '揭曉你的命運歌單...', color: 'bg-red-600 text-white' },
-            { rarity: 'SR', title: '馴鹿舞伴', desc: '指定兩人為你伴舞。', color: 'bg-gray-400 text-white' },
+            { rarity: 'SR', title: '馴鹿舞伴', desc: '加 20 分並指定伴舞。', color: 'bg-gray-400 text-white' },
             { rarity: 'TRAP', title: '？？？', desc: '揭曉你的命運歌單...', color: 'bg-red-600 text-white' },
-            { rarity: 'SR', title: '節奏大師', desc: '全場必須幫你拍手伴奏。', color: 'bg-gray-400 text-white' },
-            { rarity: 'SR', title: '天使合聲', desc: '指定一人為你全程和聲。', color: 'bg-gray-400 text-white' },
-            { rarity: 'R', title: '聖誕帽咒', desc: '唱歌必須全程戴聖誕帽。', color: 'bg-orange-600 text-white' },
+            { rarity: 'SR', title: '節奏大師', desc: '加 20 分。', color: 'bg-gray-400 text-white' },
+            { rarity: 'SR', title: '天使合聲', desc: '加 20 分。', color: 'bg-gray-400 text-white' },
+            { rarity: 'R', title: '聖誕帽咒', desc: '加 10 分但要戴帽子。', color: 'bg-orange-600 text-white' },
             { rarity: 'TRAP', title: '？？？', desc: '揭曉你的命運歌單...', color: 'bg-red-600 text-white' },
-            { rarity: 'R', title: '重禮挑戰', desc: '雙手抱著重物唱歌。', color: 'bg-orange-600 text-white' },
-            { rarity: 'R', title: '假音雪花', desc: '副歌全用假音唱。', color: 'bg-orange-600 text-white' },
-            { rarity: 'R', title: '轉圈雪球', desc: '間奏時必須原地自轉三圈。', color: 'bg-orange-600 text-white' },
-            { rarity: 'R', title: '靜默聖誕', desc: '這首歌的結尾必須用氣聲唱。', color: 'bg-orange-600 text-white' }
+            { rarity: 'R', title: '重禮挑戰', desc: '加 10 分。', color: 'bg-orange-600 text-white' },
+            { rarity: 'R', title: '假音雪花', desc: '加 10 分。', color: 'bg-orange-600 text-white' },
+            { rarity: 'R', title: '轉圈雪球', desc: '加 10 分。', color: 'bg-orange-600 text-white' },
+            { rarity: 'R', title: '靜默聖誕', desc: '加 10 分。', color: 'bg-orange-600 text-white' }
         ];
 
         let canFlip = false;
         let isShuffling = false;
         let cardDataMap = [];
+        let usedTrapIndices = [];
 
-        // 初始化
-        window.onload = function() {
+        window.onload = () => {
             initCards();
-            createSnow();
+            // 綁定按鈕點擊事件
+            document.getElementById('shuffleBtn').onclick = shuffleCards;
         };
 
-        document.getElementById('overlay').addEventListener('click', function() {
+        document.getElementById('overlay').onclick = function() {
             this.style.display = 'none';
-            // 嘗試解鎖音訊
-            ['audioShuffle', 'audioFlip', 'audioSSR'].forEach(id => {
-                const a = document.getElementById(id);
-                if(a) a.play().then(() => { a.pause(); a.currentTime = 0; }).catch(() => {});
-            });
-        });
+        };
 
-        document.getElementById('shuffleBtn').addEventListener('click', shuffleCards);
+        function updateScore(team, val) {
+            scores[team] += val;
+            document.getElementById(`score-${team}`).innerText = scores[team];
+        }
+
+        function resetAll() {
+            if(confirm("確定要重置所有數據嗎？")) {
+                scores = { red: 0, green: 0 };
+                document.getElementById(`score-red`).innerText = 0;
+                document.getElementById(`score-green`).innerText = 0;
+                shuffleCards();
+            }
+        }
 
         function initCards() {
             const grid = document.getElementById('cardGrid');
-            if (!grid) return;
             grid.innerHTML = '';
             for (let i = 0; i < 12; i++) {
                 const card = document.createElement('div');
@@ -265,24 +266,15 @@
                 card.id = `container-${i}`;
                 card.onclick = () => handleCardClick(i);
                 card.innerHTML = `
-                    <div class="card-inner" id="inner-${i}">
+                    <div class="card-inner">
                         <div class="card-back"></div>
                         <div class="card-front" id="front-${i}">
-                            <div class="rarity-tag text-[7px] font-bold px-1 py-0.5 rounded-full mb-1"></div>
-                            <div class="reward-title font-bold text-[11px] mb-0.5"></div>
-                            <div class="reward-desc text-[8px] text-gray-500"></div>
+                            <div class="rarity-tag text-[8px] font-bold px-1.5 py-0.5 rounded-full mb-1"></div>
+                            <div class="reward-title font-bold text-[12px] mb-1"></div>
+                            <div class="reward-desc text-[9px] text-gray-500"></div>
                         </div>
-                    </div>
-                `;
+                    </div>`;
                 grid.appendChild(card);
-            }
-        }
-
-        function playSound(id) {
-            const audio = document.getElementById(id);
-            if (audio) {
-                audio.currentTime = 0;
-                audio.play().catch(e => console.warn("音訊播放受阻:", e));
             }
         }
 
@@ -291,109 +283,94 @@
             isShuffling = true;
             canFlip = false;
             
-            // 重置所有卡片狀態
+            document.getElementById('statusText').innerText = "洗牌中...";
+            
+            // 先翻回背面
             document.querySelectorAll('.card-container').forEach(c => c.classList.remove('flipped'));
             
-            playSound('audioShuffle');
-            document.getElementById('statusText').innerText = "命運打亂中...";
+            const audio = document.getElementById('audioShuffle');
+            if (audio) { audio.currentTime = 0; audio.play().catch(()=>{}); }
 
-            cardDataMap = [...baseCardPool].sort(() => Math.random() - 0.5);
-            
-            // 更新卡片內容，確保元素存在
-            cardDataMap.forEach((data, i) => {
-                const front = document.getElementById(`front-${i}`);
-                if (front) {
-                    front.className = `card-front rarity-${data.rarity.toLowerCase()}`;
-                    const tag = front.querySelector('.rarity-tag');
-                    const title = front.querySelector('.reward-title');
-                    const desc = front.querySelector('.reward-desc');
-                    
-                    if (tag) {
-                        tag.innerText = data.rarity === 'TRAP' ? '強制曲目' : data.rarity;
-                        tag.className = `rarity-tag text-[7px] font-bold px-1 py-0.5 rounded-full mb-1 ${data.color}`;
-                    }
-                    if (title) title.innerText = data.title;
-                    if (desc) desc.innerText = data.desc;
-                }
-            });
-
+            // 延遲更新內容以配合翻轉動畫
             setTimeout(() => {
+                cardDataMap = [...baseCardPool].sort(() => Math.random() - 0.5);
+                cardDataMap.forEach((data, i) => {
+                    const front = document.getElementById(`front-${i}`);
+                    if (front) {
+                        const tag = front.querySelector('.rarity-tag');
+                        tag.innerText = data.rarity === 'TRAP' ? '強制曲目' : data.rarity;
+                        tag.className = `rarity-tag text-[8px] font-bold px-1.5 py-0.5 rounded-full mb-1 ${data.color}`;
+                        front.querySelector('.reward-title').innerText = data.title;
+                        front.querySelector('.reward-desc').innerText = data.desc;
+                    }
+                });
+                
                 isShuffling = false;
                 canFlip = true;
-                document.getElementById('statusText').innerText = "洗牌完成！請選一張";
-            }, 800);
+                document.getElementById('statusText').innerText = "洗牌完成！請選一張命運之牌";
+            }, 600);
         }
 
-        function handleCardClick(index) {
+        function handleCardClick(i) {
             if (!canFlip || isShuffling) return;
-            const container = document.getElementById(`container-${index}`);
+            const container = document.getElementById(`container-${i}`);
             if (!container || container.classList.contains('flipped')) return;
 
-            let data = {...cardDataMap[index]};
+            let data = {...cardDataMap[i]};
+            
+            // 如果是 TRAP，從歌庫抽歌
             if (data.rarity === 'TRAP') {
-                const trap = getNextTrapSong();
-                data.title = trap.title;
+                if (usedTrapIndices.length >= trapSongs.length) usedTrapIndices = [];
+                let r; do { r = Math.floor(Math.random() * trapSongs.length); } while (usedTrapIndices.includes(r));
+                usedTrapIndices.push(r);
+                const trap = trapSongs[r];
+                data.title = trap.title; 
                 data.desc = trap.desc;
-                data.ktvCode = trap.ktvCode;
+                data.ktvCode = trap.ktvCode; 
                 data.ytSearch = trap.ytSearch;
                 
-                // 動態更新翻開後的卡面文字
-                const front = document.getElementById(`front-${index}`);
+                const front = document.getElementById(`front-${i}`);
                 if (front) {
                     front.querySelector('.reward-title').innerText = data.title;
                     front.querySelector('.reward-desc').innerText = data.desc;
                 }
             }
 
-            playSound('audioFlip');
+            const flipAudio = document.getElementById('audioFlip');
+            if (flipAudio) { flipAudio.currentTime = 0; flipAudio.play().catch(()=>{}); }
+            
             container.classList.add('flipped');
             
             setTimeout(() => {
-                showResultModal(data);
-                if (data.rarity === 'SSR') playSound('audioSSR');
+                showModal(data);
+                if (data.rarity === 'SSR') {
+                    const ssrAudio = document.getElementById('audioSSR');
+                    if(ssrAudio) ssrAudio.play().catch(()=>{});
+                }
             }, 600);
         }
 
-        function showResultModal(data) {
+        function showModal(data) {
             const modal = document.getElementById('resultModal');
-            if (!modal) return;
-            
-            const actionArea = document.getElementById('modalActionArea');
-            actionArea.innerHTML = '';
-
-            document.getElementById('modalLabel').innerText = data.rarity === 'TRAP' ? "🚨 命運大反轉 🚨" : "抽中獎項";
-            document.getElementById('modalRarity').innerText = data.rarity === 'TRAP' ? '強制更換歌曲' : data.rarity;
+            document.getElementById('modalLabel').innerText = data.rarity === 'TRAP' ? "🚨 命運反轉 🚨" : "抽中獎項";
+            document.getElementById('modalRarity').innerText = data.rarity;
             document.getElementById('modalRarity').className = `text-xs px-3 py-1 rounded-full mb-4 font-bold ${data.color}`;
             document.getElementById('modalTitle').innerText = data.title;
             document.getElementById('modalDesc').innerText = data.desc;
-
-            if (data.rarity === 'TRAP') {
+            
+            const area = document.getElementById('modalActionArea');
+            area.innerHTML = '';
+            if (data.ktvCode || data.ytSearch) {
                 const btn = document.createElement('button');
                 btn.className = 'btn-action';
-                const searchStr = data.ytSearch || data.title;
-                btn.innerText = data.ktvCode ? `KTV 點歌編號：${data.ktvCode}` : `🎬 開啟 YouTube 播放`;
+                btn.innerText = data.ktvCode ? `KTV 編號：${data.ktvCode}` : `YouTube 搜尋播放`;
                 btn.onclick = () => {
-                    window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(searchStr)}`, '_blank');
+                    const q = data.ytSearch || data.title;
+                    window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`, '_blank');
                 };
-                actionArea.appendChild(btn);
+                area.appendChild(btn);
             }
-
             modal.style.display = 'flex';
-        }
-
-        function createSnow() {
-            const container = document.getElementById('snowContainer');
-            if (!container) return;
-            for (let i = 0; i < 30; i++) {
-                const flake = document.createElement('div');
-                flake.className = 'flake';
-                flake.innerHTML = '❄';
-                flake.style.left = Math.random() * 100 + 'vw';
-                flake.style.animationDuration = (Math.random() * 3 + 2) + 's';
-                flake.style.opacity = Math.random();
-                flake.style.top = "-20px";
-                container.appendChild(flake);
-            }
         }
     </script>
 </body>
