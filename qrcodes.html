@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>關卡 QRCode 列印頁（主辦方專用）</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+    body {
+        font-family: 'Noto Sans TC', sans-serif;
+        background: #f2f2f2;
+        margin: 0;
+        padding: 24px;
+        color: #111;
+    }
+    h1 { font-size: 1.4rem; margin-bottom: 4px; }
+    .note {
+        background: #fff8e1; border: 1px solid #ffe082; border-radius: 10px;
+        padding: 14px 16px; font-size: 0.85rem; line-height: 1.6; margin-bottom: 24px; max-width: 700px;
+    }
+    .note b { color: #b45309; }
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 20px;
+        max-width: 1000px;
+    }
+    .card {
+        background: white; border: 2px dashed #999; border-radius: 16px;
+        padding: 20px; text-align: center; page-break-inside: avoid;
+    }
+    .card .stage-no {
+        display: inline-block; background: #111; color: #ffd76a;
+        font-weight: 900; font-size: 0.75rem; padding: 4px 12px; border-radius: 999px; margin-bottom: 10px;
+    }
+    .card h2 { margin: 4px 0 12px; font-size: 1.2rem; }
+    .card .icon { font-size: 1.8rem; margin-bottom: 4px; }
+    .qr-box { display: flex; justify-content: center; margin: 10px 0; }
+    .card .token { font-size: 0.7rem; color: #666; word-break: break-all; margin-top: 8px; font-family: monospace; }
+    .card .hint { font-size: 0.75rem; color: #444; margin-top: 6px; }
+    .toolbar { margin-bottom: 20px; }
+    button {
+        background: #111; color: white; border: none; border-radius: 999px;
+        padding: 10px 22px; font-weight: 700; font-size: 0.85rem; cursor: pointer;
+    }
+    @media print {
+        body { background: white; padding: 0; }
+        .toolbar, .note { display: none; }
+        .grid { grid-template-columns: repeat(2, 1fr); }
+    }
+</style>
+</head>
+<body>
+
+<h1>🗺️ 掃碼闖關大冒險 — 關卡 QRCode 列印頁</h1>
+<div class="note">
+    <b>使用說明：</b>此頁面僅供主辦方設定與列印使用，請勿讓玩家看到本頁。<br>
+    請將以下每張卡片列印或截圖後張貼 / 放置於對應的活動關卡地點。玩家需在該地點用手機開啟遊戲頁面 (<code>index.html</code>)，掃描此處的 QRCode 才能過關。<br>
+    若要修改關卡數量、名稱或提示文字，請同步編輯 <code>index.html</code> 與本頁最上方的 <b>STAGES</b> 設定陣列，兩邊需保持一致。
+</div>
+
+<div class="toolbar">
+    <button onclick="window.print()">🖨️ 列印所有關卡 QRCode</button>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<script>
+/* 請與 index.html 中的 GAME_ID / STAGES 保持一致 */
+const GAME_ID = 'DEMO2026';
+const STAGES = [
+    { key: 'S1', title: '森林呢喃', icon: '🌲', hint: '放置地點：公園入口告示牌' },
+    { key: 'S2', title: '湖畔謎題', icon: '🌊', hint: '放置地點：湖邊涼亭' },
+    { key: 'S3', title: '古堡回音', icon: '🏰', hint: '放置地點：舊城牆遺跡' },
+    { key: 'S4', title: '星空密碼', icon: '✨', hint: '放置地點：天文台看板' },
+    { key: 'S5', title: '寶藏之門', icon: '💎', hint: '放置地點：終點集合處' },
+];
+
+const grid = document.getElementById('grid');
+STAGES.forEach((stg, i) => {
+    const token = `QRGAME:${GAME_ID}:${stg.key}`;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+        <div class="stage-no">第 ${i + 1} 關 / 共 ${STAGES.length} 關</div>
+        <div class="icon">${stg.icon}</div>
+        <h2>${stg.title}</h2>
+        <div class="qr-box" id="qr-${i}"></div>
+        <div class="token">${token}</div>
+        <div class="hint">${stg.hint}</div>
+    `;
+    grid.appendChild(card);
+
+    try {
+        if (typeof QRCode === 'undefined') throw new Error('QRCode 函式庫未載入');
+        new QRCode(document.getElementById(`qr-${i}`), {
+            text: token,
+            width: 180,
+            height: 180,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
+        });
+    } catch (e) {
+        document.getElementById(`qr-${i}`).innerHTML =
+            '<div style="font-size:0.75rem;color:#c00;padding:20px 0;">QRCode 圖片產生失敗<br>請檢查網路連線後重新整理本頁</div>';
+    }
+});
+</script>
+</body>
+</html>
