@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>掃碼闖關大冒險</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Press+Start+2P&display=swap');
+
+    * { -webkit-tap-highlight-color: transparent; }
+    html, body {
+        font-family: 'Noto Sans TC', sans-serif;
+        margin: 0; height: 100%;
+        background: #0f0c29;
+        color: white;
+        overscroll-behavior: none;
+    }
+    body {
+        background: radial-gradient(circle at 50% 0%, #302b63 0%, #0f0c29 70%);
+        min-height: 100vh;
+        display: flex; flex-direction: column; align-items: center;
+    }
+    #app { width: 100%; max-width: 480px; min-height: 100vh; display: flex; flex-direction: column; position: relative; }
+    .screen { display: none; flex-direction: column; flex: 1; padding: 20px; padding-bottom: 40px; animation: fadeIn .4s ease-out; }
+    .screen.active { display: flex; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px);} to { opacity: 1; transform: translateY(0);} }
+
+    .glass {
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.12);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, #ff8a00 0%, #e52e71 100%);
+        font-weight: 900; border-radius: 999px; padding: 16px 24px;
+        box-shadow: 0 8px 24px rgba(229,46,113,0.35);
+        transition: transform .15s;
+    }
+    .btn-primary:active { transform: scale(0.96); }
+    .btn-ghost {
+        background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.25);
+        border-radius: 999px; padding: 14px 24px; font-weight: 700;
+        transition: transform .15s;
+    }
+    .btn-ghost:active { transform: scale(0.96); }
+
+    /* progress dots */
+    .dots { display: flex; justify-content: center; gap: 8px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.2); transition: all .3s; }
+    .dot.done { background: #ffd76a; box-shadow: 0 0 8px #ffd76a; }
+    .dot.current { background: #fff; width: 22px; border-radius: 6px; }
+
+    /* stage icon animation */
+    .stage-icon {
+        font-size: 5rem; line-height: 1;
+        filter: drop-shadow(0 0 20px rgba(255,255,255,0.35));
+        animation: floaty 3s ease-in-out infinite;
+    }
+    @keyframes floaty { 0%,100% { transform: translateY(0) rotate(-3deg);} 50% { transform: translateY(-12px) rotate(3deg);} }
+
+    /* ---- RPG 開場風格（第一關專用） ---- */
+    #stage-card.rpg-mode {
+        background: radial-gradient(ellipse at 50% 15%, #1b2a54 0%, #05070f 75%);
+        border: 3px solid #fff;
+        box-shadow: 0 0 0 4px #0a0e1a, inset 0 0 40px rgba(110,160,255,0.25);
+        position: relative;
+        overflow: hidden;
+    }
+    #stage-card.rpg-mode::before {
+        content: '';
+        position: absolute; inset: 0; pointer-events: none;
+        background-image:
+            radial-gradient(1.5px 1.5px at 18% 22%, #fff, transparent),
+            radial-gradient(1.5px 1.5px at 68% 12%, #fff, transparent),
+            radial-gradient(1px 1px at 85% 55%, #fff, transparent),
+            radial-gradient(1px 1px at 38% 70%, #fff, transparent),
+            radial-gradient(1.5px 1.5px at 8% 78%, #fff, transparent),
+            radial-gradient(1px 1px at 58% 42%, #fff, transparent),
+            radial-gradient(1px 1px at 92% 28%, #fff, transparent);
+        animation: twinkle 2.4s ease-in-out infinite alternate;
+    }
+    @keyframes twinkle { from { opacity: .25; } to { opacity: .85; } }
+
+    .rpg-logo {
+        font-family: 'Press Start 2P', 'Noto Sans TC', monospace;
+        font-size: .55rem; letter-spacing: 2px; color: #ffd76a;
+        text-shadow: 2px 2px 0 #000; position: relative; z-index: 1;
+    }
+    .rpg-title {
+        font-family: 'Press Start 2P', 'Noto Sans TC', monospace !important;
+        font-size: 1.15rem !important; line-height: 1.7; letter-spacing: 1px;
+        text-shadow: 2px 2px 0 #000; position: relative; z-index: 1;
+    }
+    .rpg-sprite { animation: rpgBob 0.9s steps(2) infinite, floaty 3s ease-in-out infinite; position: relative; z-index: 1; }
+    @keyframes rpgBob { 0%,100% { transform: translateX(-3px);} 50% { transform: translateX(3px);} }
+
+    .rpg-dialog {
+        background: rgba(4,7,20,0.88); border: 3px solid #fff;
+        box-shadow: 0 0 0 3px #1b2a54; border-radius: 4px;
+        padding: 14px 16px; font-size: .82rem; line-height: 1.8;
+        text-align: left; position: relative; z-index: 1; min-height: 4.2em; width: 100%;
+        white-space: pre-line;
+    }
+    .rpg-dialog .cursor-arrow {
+        position: absolute; right: 10px; bottom: 8px; color: #ffd76a;
+        animation: bob .8s infinite;
+    }
+    @keyframes bob { 0%,100% { transform: translateY(0);} 50% { transform: translateY(4px);} }
+
+    .rpg-btn.btn-primary {
+        font-family: 'Press Start 2P', 'Noto Sans TC', monospace !important;
+        font-size: .72rem !important; letter-spacing: 1px;
+        border: 3px solid #fff; box-shadow: 0 0 0 3px #1b2a54, 0 4px 0 #000;
+    }
+    .rpg-btn.btn-primary:active { box-shadow: 0 0 0 3px #1b2a54, 0 1px 0 #000; }
+
+    #scanner-wrap {
+        position: relative; width: 100%; aspect-ratio: 1/1; border-radius: 24px;
+        overflow: hidden; border: 3px solid rgba(255,255,255,0.25); background: #000;
+    }
+    #reader { width: 100%; height: 100%; }
+    #reader video { object-fit: cover !important; width: 100% !important; height: 100% !important; }
+    .scan-frame {
+        position: absolute; inset: 12%; border: 3px solid #ffd76a; border-radius: 18px;
+        box-shadow: 0 0 0 999px rgba(0,0,0,0.35); pointer-events: none;
+    }
+    .scan-line {
+        position: absolute; left: 12%; right: 12%; top: 12%; height: 3px;
+        background: linear-gradient(90deg, transparent, #ffd76a, transparent);
+        animation: scan 2s linear infinite; pointer-events: none;
+    }
+    @keyframes scan { 0% { top: 12%; } 100% { top: 86%; } }
+
+    .shake { animation: shakeAnim .4s; }
+    @keyframes shakeAnim {
+        10%,90% { transform: translateX(-2px); } 20%,80% { transform: translateX(4px); }
+        30%,50%,70% { transform: translateX(-8px); } 40%,60% { transform: translateX(8px); }
+    }
+
+    #overlay-success {
+        position: fixed; inset: 0; z-index: 200; display: none;
+        align-items: center; justify-content: center; flex-direction: column;
+        background: rgba(10,8,30,0.92); backdrop-filter: blur(6px); text-align: center; padding: 24px;
+    }
+    .burst-icon { font-size: 6rem; animation: burst .6s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes burst { 0% { transform: scale(0) rotate(-45deg); opacity:0; } 60% { transform: scale(1.3) rotate(10deg); opacity:1;} 100% { transform: scale(1) rotate(0deg);} }
+
+    .timer-pill {
+        font-variant-numeric: tabular-nums; letter-spacing: 1px;
+    }
+
+    input[type=text] {
+        background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.25);
+        border-radius: 12px; padding: 12px 14px; color: white; width: 100%; text-align: center;
+        font-weight: 700; letter-spacing: 1px;
+    }
+    input[type=text]:focus { outline: none; border-color: #ffd76a; }
+
+    .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="app">
+
+    <!-- ===================== 開場 ===================== -->
+    <section id="screen-welcome" class="screen active">
+        <div class="flex-1 flex flex-col items-center justify-center text-center gap-6">
+            <div class="text-7xl">🗺️</div>
+            <h1 class="text-3xl font-black leading-tight">掃碼闖關<br>大冒險</h1>
+            <p class="text-white/70 text-sm leading-relaxed px-2">
+                全程約 <span class="text-yellow-300 font-bold">60 分鐘</span>，共 <span id="welcome-stage-count" class="text-yellow-300 font-bold">5</span> 個關卡。<br>
+                找到每一關的 QRCode 並掃描，即可觸發過關動畫，往下一關前進！
+            </p>
+        </div>
+        <div class="flex flex-col gap-3">
+            <button onclick="showScreen('rules')" class="btn-primary text-lg">開始遊戲說明 ➜</button>
+            <button onclick="tryResume()" id="btn-resume" class="btn-ghost hidden text-sm">繼續上次進度</button>
+        </div>
+    </section>
+
+    <!-- ===================== 規則說明 ===================== -->
+    <section id="screen-rules" class="screen">
+        <h2 class="text-2xl font-black mb-4">🎯 遊戲規則</h2>
+        <div class="glass p-5 flex flex-col gap-4 text-sm leading-relaxed text-white/90">
+            <div class="flex gap-3"><span class="text-xl">1️⃣</span><span>每一關會提示你前往某個地點，找到該關卡的 <b>QRCode</b>。</span></div>
+            <div class="flex gap-3"><span class="text-xl">2️⃣</span><span>按下「掃描 QRCode」開啟相機，對準關卡的 QRCode 掃描。</span></div>
+            <div class="flex gap-3"><span class="text-xl">3️⃣</span><span>掃描成功會播放過關動畫，並自動解鎖下一關。</span></div>
+            <div class="flex gap-3"><span class="text-xl">4️⃣</span><span>掃到錯誤或非本關的 QRCode 不會過關，請找到正確地點再試一次。</span></div>
+            <div class="flex gap-3"><span class="text-xl">5️⃣</span><span>全部關卡完成即可看到通關證明與總花費時間！</span></div>
+        </div>
+        <div class="mt-6 flex flex-col gap-3">
+            <button onclick="startGame()" class="btn-primary text-lg">開始挑戰！🚀</button>
+            <button onclick="showScreen('welcome')" class="btn-ghost text-sm">返回</button>
+        </div>
+    </section>
+
+    <!-- ===================== 關卡等待畫面 ===================== -->
+    <section id="screen-stage" class="screen">
+        <div class="flex items-center justify-between mb-2">
+            <div class="timer-pill glass px-3 py-1 text-xs font-bold" id="timer-display">⏱ 00:00</div>
+            <button onclick="confirmReset()" class="text-white/40 text-xs underline">重新開始</button>
+        </div>
+        <div class="dots my-4" id="dots"></div>
+
+        <div class="glass flex-1 flex flex-col items-center justify-center text-center gap-4 p-6" id="stage-card">
+            <div class="rpg-logo hidden" id="rpg-logo">⚔️ ADVENTURE START ⚔️</div>
+            <div class="stage-icon" id="stage-icon">🌲</div>
+            <div class="text-xs tracking-widest text-yellow-300 font-bold" id="stage-index-label">第 1 關 / 共 5 關</div>
+            <h2 class="text-2xl font-black" id="stage-title">森林呢喃</h2>
+            <p class="text-white/70 text-sm leading-relaxed" id="stage-hint">請前往公園入口的告示牌，尋找關卡一的 QRCode。</p>
+            <div class="rpg-dialog hidden" id="rpg-dialog"><span id="rpg-dialog-text"></span><span class="cursor-arrow">▼</span></div>
+        </div>
+
+        <div class="flex flex-col gap-3 mt-5">
+            <button onclick="openScanner()" id="btn-scan" class="btn-primary text-lg">📷 掃描 QRCode</button>
+            <button onclick="openManualEntry()" class="text-white/50 text-xs underline text-center">相機無法使用？手動輸入代碼</button>
+        </div>
+    </section>
+
+    <!-- ===================== 掃描畫面 ===================== -->
+    <section id="screen-scanner" class="screen">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-black" id="scanner-title">掃描第 1 關 QRCode</h2>
+            <button onclick="closeScanner()" class="btn-ghost text-xs px-4 py-2">✕ 取消</button>
+        </div>
+        <div id="scanner-wrap">
+            <div id="reader"></div>
+            <div class="scan-frame"></div>
+            <div class="scan-line"></div>
+        </div>
+        <p id="scanner-status" class="text-center text-sm text-white/60 mt-4">將 QRCode 對準框內即可自動掃描</p>
+        <p id="scanner-error" class="text-center text-sm text-red-400 mt-2 hidden"></p>
+    </section>
+
+    <!-- ===================== 手動輸入 ===================== -->
+    <section id="screen-manual" class="screen">
+        <div class="flex-1 flex flex-col items-center justify-center gap-4 text-center">
+            <div class="text-5xl">⌨️</div>
+            <h2 class="text-xl font-black">手動輸入代碼</h2>
+            <p class="text-white/60 text-sm px-4">若相機無法使用，可請主辦方提供該關卡代碼並輸入於下方。</p>
+            <input type="text" id="manual-input" placeholder="輸入關卡代碼" autocomplete="off">
+            <p id="manual-error" class="text-red-400 text-sm hidden">代碼不正確，請再確認一次</p>
+        </div>
+        <div class="flex flex-col gap-3">
+            <button onclick="submitManual()" class="btn-primary text-lg">送出</button>
+            <button onclick="showScreen('stage')" class="btn-ghost text-sm">返回</button>
+        </div>
+    </section>
+
+    <!-- ===================== 完成畫面 ===================== -->
+    <section id="screen-complete" class="screen">
+        <div class="flex-1 flex flex-col items-center justify-center text-center gap-5">
+            <div class="text-7xl">🏆</div>
+            <h1 class="text-3xl font-black">全部通關！</h1>
+            <p class="text-white/70 text-sm">恭喜完成所有關卡挑戰</p>
+            <div class="glass px-8 py-4">
+                <div class="text-xs text-white/50 mb-1">總花費時間</div>
+                <div class="text-4xl font-black text-yellow-300" id="final-time">00:00</div>
+            </div>
+            <div class="glass px-8 py-4">
+                <div class="text-xs text-white/50 mb-1">通關密語</div>
+                <div class="text-xl font-black tracking-widest text-yellow-300" id="final-code">TREASURE</div>
+            </div>
+            <p class="text-white/40 text-xs">請將通關密語出示給工作人員兌換獎勵</p>
+        </div>
+        <button onclick="confirmReset()" class="btn-ghost text-sm mt-4">重新開始遊戲</button>
+    </section>
+
+</div>
+
+<!-- ===================== 過關動畫 Overlay ===================== -->
+<div id="overlay-success">
+    <div class="burst-icon" id="success-icon">🎉</div>
+    <h2 class="text-2xl font-black mt-4" id="success-title">第 1 關完成！</h2>
+    <p class="text-white/70 text-sm mt-2" id="success-sub">正在前往下一關...</p>
+    <button onclick="proceedNext()" id="success-btn" class="btn-primary mt-6 text-base">繼續 ➜</button>
+</div>
+
+<script>
+/* =========================================================================
+   遊戲設定：主辦方可在這裡自由編輯關卡數量、名稱、提示文字、圖示與代碼
+   ========================================================================= */
+const GAME_ID = 'DEMO2026';
+
+const STAGES = [
+    { key: 'S1', title: '森林呢喃', icon: '🌲', hint: '請前往公園入口的告示牌，尋找關卡一的 QRCode。', successMsg: '你聽見了森林的低語...',
+      introText: '勇者啊，你的旅程即將展開……\n傳說中的寶藏，就藏在前方五道試煉之後。\n找到刻有符文的 QRCode，掃描它，踏出第一步吧！' },
+    { key: 'S2', title: '湖畔謎題', icon: '🌊', hint: '走到湖邊涼亭，關卡二的 QRCode 就藏在那裡。', successMsg: '湖水映出了下一條線索！' },
+    { key: 'S3', title: '古堡回音', icon: '🏰', hint: '前往舊城牆遺跡，尋找關卡三的 QRCode。', successMsg: '古老的回音為你指路...' },
+    { key: 'S4', title: '星空密碼', icon: '✨', hint: '找到天文台前的看板，掃描關卡四的 QRCode。', successMsg: '星光為你解開了密碼！' },
+    { key: 'S5', title: '寶藏之門', icon: '💎', hint: '最後，前往終點集合處，掃描寶藏之門的 QRCode。', successMsg: '寶藏之門緩緩開啟...' },
+];
+const FINAL_CODE = 'TREASURE2026';
+
+function tokenFor(stageIndex) { return `QRGAME:${GAME_ID}:${STAGES[stageIndex].key}`; }
+
+/* ========================================================================= */
+
+const STORAGE_KEY = 'qrgame_state_v1';
+let state = null;
+let html5Qr = null;
+let scanning = false;
+let timerHandle = null;
+
+function loadState() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return null;
+}
+function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function freshState() { return { currentStage: 0, startTime: Date.now(), completed: false }; }
+
+function showScreen(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + name).classList.add('active');
+}
+
+function fmtTime(ms) {
+    const totalSec = Math.floor(ms / 1000);
+    const m = String(Math.floor(totalSec / 60)).padStart(2, '0');
+    const s = String(totalSec % 60).padStart(2, '0');
+    return `${m}:${s}`;
+}
+
+function startTimer() {
+    stopTimer();
+    timerHandle = setInterval(() => {
+        if (!state) return;
+        document.getElementById('timer-display').textContent = '⏱ ' + fmtTime(Date.now() - state.startTime);
+    }, 1000);
+}
+function stopTimer() { if (timerHandle) clearInterval(timerHandle); timerHandle = null; }
+
+function renderDots() {
+    const dotsEl = document.getElementById('dots');
+    dotsEl.innerHTML = '';
+    STAGES.forEach((_, i) => {
+        const d = document.createElement('div');
+        d.className = 'dot' + (i < state.currentStage ? ' done' : (i === state.currentStage ? ' current' : ''));
+        dotsEl.appendChild(d);
+    });
+}
+
+function typewriter(el, text, speed) {
+    speed = speed || 32;
+    clearInterval(el._twHandle);
+    el.textContent = '';
+    const chars = Array.from(text);
+    let i = 0;
+    el._twHandle = setInterval(() => {
+        el.textContent += chars[i];
+        i++;
+        if (i >= chars.length) clearInterval(el._twHandle);
+    }, speed);
+}
+
+function renderStage() {
+    const i = state.currentStage;
+    const stg = STAGES[i];
+    const isRpgIntro = i === 0 && !!stg.introText;
+    const card = document.getElementById('stage-card');
+    const iconEl = document.getElementById('stage-icon');
+    const titleEl = document.getElementById('stage-title');
+    const hintEl = document.getElementById('stage-hint');
+    const scanBtn = document.getElementById('btn-scan');
+
+    iconEl.textContent = stg.icon;
+    document.getElementById('stage-index-label').textContent = `第 ${i + 1} 關 / 共 ${STAGES.length} 關`;
+    titleEl.textContent = stg.title;
+    hintEl.textContent = stg.hint;
+
+    card.classList.toggle('rpg-mode', isRpgIntro);
+    iconEl.classList.toggle('rpg-sprite', isRpgIntro);
+    titleEl.classList.toggle('rpg-title', isRpgIntro);
+    document.getElementById('rpg-logo').classList.toggle('hidden', !isRpgIntro);
+    document.getElementById('rpg-dialog').classList.toggle('hidden', !isRpgIntro);
+    hintEl.classList.toggle('hidden', isRpgIntro);
+    scanBtn.classList.toggle('rpg-btn', isRpgIntro);
+    scanBtn.textContent = isRpgIntro ? '⚔️ 掃描符文，展開冒險' : '📷 掃描 QRCode';
+
+    if (isRpgIntro) {
+        typewriter(document.getElementById('rpg-dialog-text'), stg.introText);
+    }
+
+    renderDots();
+    showScreen('stage');
+}
+
+function init() {
+    document.getElementById('welcome-stage-count').textContent = STAGES.length;
+    const saved = loadState();
+    if (saved && !saved.completed && saved.currentStage > 0 && saved.currentStage < STAGES.length) {
+        document.getElementById('btn-resume').classList.remove('hidden');
+    }
+}
+
+function tryResume() {
+    const saved = loadState();
+    if (saved) {
+        state = saved;
+        startTimer();
+        renderStage();
+    }
+}
+
+function startGame() {
+    state = freshState();
+    saveState();
+    startTimer();
+    renderStage();
+}
+
+/* ---------------- 掃描 ---------------- */
+
+function openScanner() {
+    const i = state.currentStage;
+    document.getElementById('scanner-title').textContent = `掃描第 ${i + 1} 關 QRCode`;
+    document.getElementById('scanner-error').classList.add('hidden');
+    document.getElementById('scanner-status').textContent = '將 QRCode 對準框內即可自動掃描';
+    showScreen('scanner');
+
+    if (typeof Html5Qrcode === 'undefined') {
+        showScannerError('相機模組載入失敗，請改用手動輸入代碼。');
+        return;
+    }
+
+    html5Qr = new Html5Qrcode('reader');
+    scanning = true;
+    html5Qr.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 220, height: 220 } },
+        onScanSuccess,
+        () => {}
+    ).catch(err => {
+        showScannerError('無法開啟相機，請確認已授權相機權限，或改用手動輸入代碼。');
+    });
+}
+
+function showScannerError(msg) {
+    const el = document.getElementById('scanner-error');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+}
+
+function closeScanner() {
+    stopScanning();
+    showScreen('stage');
+}
+
+function stopScanning() {
+    if (html5Qr && scanning) {
+        scanning = false;
+        html5Qr.stop().then(() => html5Qr.clear()).catch(() => {});
+    }
+}
+
+function onScanSuccess(decodedText) {
+    if (!scanning) return;
+    const expected = tokenFor(state.currentStage);
+    if (decodedText.trim() === expected) {
+        scanning = false;
+        html5Qr.stop().then(() => html5Qr.clear()).catch(() => {});
+        handleStageCleared();
+    } else {
+        if (navigator.vibrate) navigator.vibrate(150);
+        document.getElementById('scanner-status').textContent = '這不是本關的 QRCode，請找到正確地點再試一次';
+        document.getElementById('scanner-status').classList.add('shake');
+        setTimeout(() => document.getElementById('scanner-status').classList.remove('shake'), 400);
+    }
+}
+
+/* ---------------- 手動輸入 ---------------- */
+
+function openManualEntry() {
+    document.getElementById('manual-input').value = '';
+    document.getElementById('manual-error').classList.add('hidden');
+    showScreen('manual');
+}
+
+function submitManual() {
+    const val = document.getElementById('manual-input').value.trim();
+    const expected = tokenFor(state.currentStage);
+    const shortExpected = STAGES[state.currentStage].key;
+    if (val === expected || val.toUpperCase() === shortExpected) {
+        handleStageCleared();
+    } else {
+        document.getElementById('manual-error').classList.remove('hidden');
+        if (navigator.vibrate) navigator.vibrate(150);
+    }
+}
+
+/* ---------------- 過關 ---------------- */
+
+function handleStageCleared() {
+    const stg = STAGES[state.currentStage];
+    document.getElementById('success-icon').textContent = stg.icon;
+    document.getElementById('success-title').textContent = `第 ${state.currentStage + 1} 關完成！`;
+    document.getElementById('success-sub').textContent = stg.successMsg || '正在前往下一關...';
+
+    const isLast = state.currentStage === STAGES.length - 1;
+    document.getElementById('success-btn').textContent = isLast ? '查看通關證明 🏆' : '繼續 ➜';
+
+    document.getElementById('overlay-success').style.display = 'flex';
+    fireConfetti();
+
+    state.currentStage += 1;
+    if (state.currentStage >= STAGES.length) state.completed = true;
+    saveState();
+}
+
+function fireConfetti() {
+    if (typeof confetti !== 'function') return;
+    confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 }, colors: ['#ffd76a', '#ff8a00', '#e52e71', '#ffffff'] });
+    setTimeout(() => confetti({ particleCount: 60, angle: 60, spread: 70, origin: { x: 0 } }), 200);
+    setTimeout(() => confetti({ particleCount: 60, angle: 120, spread: 70, origin: { x: 1 } }), 200);
+}
+
+function proceedNext() {
+    document.getElementById('overlay-success').style.display = 'none';
+    if (state.completed) {
+        finishGame();
+    } else {
+        renderStage();
+    }
+}
+
+function finishGame() {
+    stopTimer();
+    document.getElementById('final-time').textContent = fmtTime(Date.now() - state.startTime);
+    document.getElementById('final-code').textContent = FINAL_CODE;
+    showScreen('complete');
+    setTimeout(fireConfetti, 300);
+}
+
+/* ---------------- 重置 ---------------- */
+
+function confirmReset() {
+    if (confirm('確定要重新開始整個遊戲嗎？目前進度將會清除。')) {
+        stopScanning();
+        stopTimer();
+        localStorage.removeItem(STORAGE_KEY);
+        state = null;
+        showScreen('welcome');
+        document.getElementById('btn-resume').classList.add('hidden');
+    }
+}
+
+init();
+</script>
+</body>
+</html>
